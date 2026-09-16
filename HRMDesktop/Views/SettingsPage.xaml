@@ -1,0 +1,24 @@
+<Page x:Class="HRMDesktop.Views.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="28" MaxWidth="850" HorizontalAlignment="Stretch">
+        <TextBlock Text="Cài đặt" Style="{StaticResource PageTitle}"/>
+        <TextBlock Text="Thiết lập tài khoản và thông báo." Style="{StaticResource PageSubtitle}"/>
+        <Border Style="{StaticResource Card}" Margin="0,24,0,0" MaxWidth="760" HorizontalAlignment="Stretch">
+            <StackPanel>
+                <TextBlock Text="Thông tin tài khoản" FontSize="17" FontWeight="SemiBold"/>
+                <Grid Margin="0,18,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,10,0"><TextBlock Text="Họ và tên" FontWeight="SemiBold"/><TextBox x:Name="NameBox" Style="{StaticResource Input}" Margin="0,7,0,0" IsReadOnly="True"/></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0"><TextBlock Text="Email" FontWeight="SemiBold"/><TextBox x:Name="EmailBox" Style="{StaticResource Input}" Margin="0,7,0,0" IsReadOnly="True"/></StackPanel>
+                </Grid>
+                <Separator Margin="0,24,0,18" Background="{StaticResource BorderBrush}"/>
+                <TextBlock Text="Thông báo" FontSize="17" FontWeight="SemiBold"/>
+                <CheckBox x:Name="AttendanceNotification" Content="Nhắc nhở chấm công đầu và cuối ngày" Margin="0,16,0,0" IsChecked="True"/>
+                <CheckBox x:Name="LeaveNotification" Content="Thông báo thay đổi trạng thái đơn nghỉ phép" Margin="0,12,0,0" IsChecked="True"/>
+                <CheckBox x:Name="SalaryNotification" Content="Thông báo khi có phiếu lương mới" Margin="0,12,0,0" IsChecked="True"/>
+                <Button Content="Lưu cài đặt" Style="{StaticResource PrimaryButton}" Width="130" HorizontalAlignment="Left" Margin="0,24,0,0" Click="Save_Click"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</Page>

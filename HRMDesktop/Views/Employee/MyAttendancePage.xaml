@@ -1,0 +1,90 @@
+<Page x:Class="HRMDesktop.Views.Employee.MyAttendancePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Chấm công" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="Ghi nhận giờ vào, giờ ra và theo dõi kết quả làm việc theo ngày." Style="{StaticResource PageSubtitle}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,22,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.05*"/>
+                    <ColumnDefinition Width="0.9*"/>
+                    <ColumnDefinition Width="1.15*"/>
+                    <ColumnDefinition Width="1.15*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="Ngày làm việc" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="TodayText" FontSize="17" FontWeight="SemiBold" Margin="0,7,0,0"/></StackPanel>
+                <StackPanel Grid.Column="1"><TextBlock Text="Ca hành chính" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="08:00 - 17:30" FontSize="17" FontWeight="SemiBold" Margin="0,7,0,0"/></StackPanel>
+                <StackPanel Grid.Column="2"><TextBlock Text="Trạng thái phiên" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="StatusText" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}" Margin="0,7,0,0"/></StackPanel>
+                <StackPanel Grid.Column="3"><TextBlock Text="Kết quả" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="ResultText" FontSize="17" FontWeight="SemiBold" Foreground="#2563EB" Margin="0,7,0,0"/></StackPanel>
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"><Button x:Name="CheckInButton" Content="Chấm công vào" Style="{StaticResource PrimaryButton}" Click="CheckIn_Click"/><Button x:Name="CheckOutButton" Content="Chấm công ra" Style="{StaticResource SecondaryButton}" Margin="9,0,0,0" Click="CheckOut_Click"/></StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}" Margin="0,0,8,0"><StackPanel><TextBlock Text="Giờ vào" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="CheckInText" Text="--" FontSize="24" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0"><StackPanel><TextBlock Text="Giờ ra" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="CheckOutText" Text="--" FontSize="24" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Grid.Column="2" Style="{StaticResource Card}" Margin="8,0,0,0"><StackPanel><TextBlock Text="Thời gian làm việc" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="DurationText" Text="--" FontSize="24" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Margin="0,8,0,0"/></StackPanel></Border>
+        </Grid>
+
+        <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0,18,0,0" Padding="12">
+            <TabControl Background="Transparent" BorderThickness="0">
+                <TabItem Header="Lịch sử chấm công">
+                    <Grid Margin="4,14,4,4">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <Grid><TextBlock Text="Lịch sử theo tháng" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/><ComboBox x:Name="HistoryMonthBox" Width="170" HorizontalAlignment="Right" SelectionChanged="HistoryMonth_Changed"/></Grid>
+                        <DataGrid x:Name="HistoryGrid" Grid.Row="1" Margin="0,14,0,0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="NGÀY" Binding="{Binding WorkDateDisplay}" Width="0.8*"/>
+                                <DataGridTextColumn Header="GIỜ VÀO" Binding="{Binding CheckIn}" Width="0.7*"/>
+                                <DataGridTextColumn Header="GIỜ RA" Binding="{Binding CheckOut}" Width="0.7*"/>
+                                <DataGridTextColumn Header="THỜI GIAN LÀM" Binding="{Binding WorkDurationDisplay}" Width="1.2*"/>
+                                <DataGridTextColumn Header="KẾT QUẢ" Binding="{Binding AttendanceResult}" Width="1.1*"/>
+                                <DataGridTextColumn Header="TRẠNG THÁI" Binding="{Binding Status}" Width="1.05*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Yêu cầu điều chỉnh">
+                    <Grid Margin="4,14,4,4">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <Grid><StackPanel><TextBlock Text="Các yêu cầu đã gửi" FontSize="16" FontWeight="SemiBold"/><TextBlock Text="Dùng khi quên chấm công hoặc giờ ghi nhận chưa chính xác." Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,4,0,0"/></StackPanel><Button Content="Tạo yêu cầu" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" VerticalAlignment="Center" Click="OpenAdjustment_Click"/></Grid>
+                        <DataGrid x:Name="AdjustmentGrid" Grid.Row="1" Margin="0,14,0,0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="NGÀY" Binding="{Binding WorkDateDisplay}" Width="0.8*"/>
+                                <DataGridTextColumn Header="GIỜ ĐỀ XUẤT" Binding="{Binding RequestedTimeDisplay}" Width="1.1*"/>
+                                <DataGridTextColumn Header="LÝ DO" Binding="{Binding Reason}" Width="2*"/>
+                                <DataGridTextColumn Header="GỬI LÚC" Binding="{Binding SubmittedAtDisplay}" Width="1.15*"/>
+                                <DataGridTextColumn Header="TRẠNG THÁI" Binding="{Binding Status}" Width="1*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Border>
+
+        <Grid x:Name="AdjustmentOverlay" Grid.RowSpan="4" Panel.ZIndex="20" Background="#990F172A" Visibility="Collapsed">
+            <Border Width="520" Background="White" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <Grid><StackPanel><TextBlock Text="Yêu cầu điều chỉnh chấm công" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Admin sẽ kiểm tra trước khi cập nhật bảng công." Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0"/></StackPanel><Button Content="×" Style="{StaticResource SecondaryButton}" Width="34" Height="34" Padding="0" FontSize="20" HorizontalAlignment="Right" Click="CloseAdjustment_Click"/></Grid>
+                    <StackPanel Margin="0,22,0,0"><TextBlock Text="Ngày cần điều chỉnh *" FontWeight="SemiBold"/><DatePicker x:Name="AdjustmentDatePicker" Margin="0,7,0,0" SelectedDateChanged="AdjustmentDate_Changed"/></StackPanel>
+                    <Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><StackPanel Margin="0,0,8,0"><TextBlock Text="Giờ vào đề xuất *" FontWeight="SemiBold"/><TextBox x:Name="RequestedCheckInBox" Style="{StaticResource Input}" Margin="0,7,0,0" ToolTip="Định dạng HH:mm"/></StackPanel><StackPanel Grid.Column="1" Margin="8,0,0,0"><TextBlock Text="Giờ ra đề xuất" FontWeight="SemiBold"/><TextBox x:Name="RequestedCheckOutBox" Style="{StaticResource Input}" Margin="0,7,0,0" ToolTip="Định dạng HH:mm"/></StackPanel></Grid>
+                    <StackPanel Margin="0,16,0,0"><TextBlock Text="Lý do *" FontWeight="SemiBold"/><TextBox x:Name="AdjustmentReasonBox" Style="{StaticResource Input}" Height="68" Margin="0,7,0,0" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Padding="10,9"/></StackPanel>
+                    <TextBlock x:Name="AdjustmentErrorText" Foreground="#DC2626" Margin="0,12,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0"><Button Content="Hủy" Style="{StaticResource SecondaryButton}" Width="88" Click="CloseAdjustment_Click"/><Button Content="Gửi yêu cầu" Style="{StaticResource PrimaryButton}" Width="125" Margin="9,0,0,0" Click="SubmitAdjustment_Click"/></StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>
