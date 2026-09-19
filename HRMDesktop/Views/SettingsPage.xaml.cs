@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using HRMDesktop.Models;
+using HRMDesktop.Services;
+using System.Linq;
 
 namespace HRMDesktop.Views
 {
@@ -30,6 +32,14 @@ namespace HRMDesktop.Views
             _account.AttendanceNotificationEnabled = AttendanceNotification.IsChecked == true;
             _account.LeaveNotificationEnabled = LeaveNotification.IsChecked == true;
             _account.SalaryNotificationEnabled = SalaryNotification.IsChecked == true;
+            var credential = MockDataService.Credentials.FirstOrDefault(x => x.Username == _account.Username);
+            if (credential != null)
+            {
+                credential.AttendanceNotificationEnabled = _account.AttendanceNotificationEnabled;
+                credential.LeaveNotificationEnabled = _account.LeaveNotificationEnabled;
+                credential.SalaryNotificationEnabled = _account.SalaryNotificationEnabled;
+            }
+            MockDataService.SaveChanges();
             MessageBox.Show("Đã lưu cài đặt thông báo.", "Cài đặt", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

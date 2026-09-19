@@ -17,20 +17,20 @@ namespace HRMDesktop.Views.Employee
         {
             InitializeComponent();
             _account = account;
-            TodayText.Text = DateTime.Today.ToString("dd/MM/yyyy");
+            TodayText.Text = SystemTimeService.Today.ToString("dd/MM/yyyy");
             for (int offset = 0; offset < 12; offset++)
             {
-                DateTime month = DateTime.Today.AddMonths(-offset);
+                DateTime month = SystemTimeService.Today.AddMonths(-offset);
                 HistoryMonthBox.Items.Add(new ComboBoxItem { Content = "Tháng " + month.ToString("MM/yyyy"), Tag = month.ToString("MM/yyyy") });
             }
             HistoryMonthBox.SelectedIndex = 0;
-            AdjustmentDatePicker.DisplayDateEnd = DateTime.Today;
+            AdjustmentDatePicker.DisplayDateEnd = SystemTimeService.Today;
             RefreshData();
         }
 
         private void RefreshData()
         {
-            _today = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == _account.EmployeeId && x.WorkDate.Date == DateTime.Today);
+            _today = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == _account.EmployeeId && x.WorkDate.Date == SystemTimeService.Today);
             CheckInText.Text = _today == null ? "--" : _today.CheckIn;
             CheckOutText.Text = _today == null ? "--" : _today.CheckOut;
             StatusText.Text = _today == null ? "Chưa chấm công" : _today.Status;
@@ -38,8 +38,9 @@ namespace HRMDesktop.Views.Employee
             DurationText.Text = _today == null ? "--" : _today.WorkDurationDisplay;
 
             bool isActive = IsCurrentEmployeeActive();
-            bool isOnLeave = IsOnApprovedLeave(DateTime.Today);
-            CheckInButton.IsEnabled = isActive && !isOnLeave && (_today == null || _today.CheckIn == "--");
+            bool isOnLeave = IsOnApprovedLeave(SystemTimeService.Today);
+            bool isWorkingDay = HrmBusinessService.IsWorkingDay(SystemTimeService.Today);
+            CheckInButton.IsEnabled = isActive && isWorkingDay && !isOnLeave && (_today == null || !_today.CheckInAt.HasValue);
             CheckOutButton.IsEnabled = isActive && _today != null && _today.CheckIn != "--" && _today.CheckOut == "--";
             if (isOnLeave && _today == null)
             {
@@ -62,7 +63,7 @@ namespace HRMDesktop.Views.Employee
         private void ApplyHistoryFilter()
         {
             var selected = HistoryMonthBox.SelectedItem as ComboBoxItem;
-            string month = selected == null ? DateTime.Today.ToString("MM/yyyy") : Convert.ToString(selected.Tag);
+            string month = selected == null ? SystemTimeService.Today.ToString("MM/yyyy") : Convert.ToString(selected.Tag);
             HistoryGrid.ItemsSource = MockDataService.Attendance
                 .Where(x => x.EmployeeId == _account.EmployeeId && x.WorkDate.ToString("MM/yyyy") == month)
                 .OrderByDescending(x => x.WorkDate)
@@ -77,34 +78,46 @@ namespace HRMDesktop.Views.Employee
                 MessageBox.Show("Tài khoản hiện không thuộc nhân viên đang làm việc.", "Không thể chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (IsOnApprovedLeave(DateTime.Today))
+            if (IsOnApprovedLeave(SystemTimeService.Today))
             {
                 MessageBox.Show("Bạn đang có đơn nghỉ phép được duyệt trong hôm nay.", "Không thể chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+            if (!HrmBusinessService.IsWorkingDay(SystemTimeService.Today))
+            {
+                MessageBox.Show("Hôm nay là ngày nghỉ hoặc ngày lễ, không thuộc ca hành chính.", "Không thể chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             if (_today != null && _today.CheckIn != "--") return;
-            if (MessageBox.Show("Xác nhận chấm công vào lúc " + DateTime.Now.ToString("HH:mm") + "?", "Chấm công vào", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            DateTime now = SystemTimeService.Now;
+            if (MessageBox.Show("Xác nhận chấm công vào lúc " + now.ToString("HH:mm") + "?", "Chấm công vào", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
             if (_today == null)
             {
                 int nextId = MockDataService.Attendance.Count == 0 ? 1 : MockDataService.Attendance.Max(x => x.Id) + 1;
-                _today = new AttendanceRecord { Id = nextId, EmployeeId = employee.Id, EmployeeName = employee.FullName, EmployeeCode = employee.Code, Department = employee.Department, WorkDate = DateTime.Today, CheckIn = DateTime.Now.ToString("HH:mm"), CheckOut = "--", Status = "Đang làm việc" };
+                _today = HrmBusinessService.CreateAttendanceRecord(nextId, employee, SystemTimeService.Today, now, null);
                 MockDataService.Attendance.Add(_today);
             }
             else
             {
-                _today.CheckIn = DateTime.Now.ToString("HH:mm");
+                _today.CheckInAt = now;
                 _today.Status = "Đang làm việc";
             }
+            MockDataService.AddAudit(_account.Username, "Chấm công vào", now.ToString("dd/MM/yyyy HH:mm:ss"));
+            MockDataService.SaveChanges();
             RefreshData();
         }
 
         private void CheckOut_Click(object sender, RoutedEventArgs e)
         {
             if (_today == null || _today.CheckIn == "--" || _today.CheckOut != "--") return;
-            if (MessageBox.Show("Xác nhận chấm công ra lúc " + DateTime.Now.ToString("HH:mm") + "? Sau khi xác nhận bạn không thể tự sửa giờ.", "Chấm công ra", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-            _today.CheckOut = DateTime.Now.ToString("HH:mm");
+            DateTime now = SystemTimeService.Now;
+            if (MessageBox.Show("Xác nhận chấm công ra lúc " + now.ToString("HH:mm") + "? Sau khi xác nhận bạn không thể tự sửa giờ.", "Chấm công ra", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            if (_today.CheckInAt.HasValue && now < _today.CheckInAt.Value) { MessageBox.Show("Giờ ra không hợp lệ. Hãy gửi yêu cầu điều chỉnh.", "Không thể chấm công", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+            _today.CheckOutAt = now;
             _today.Status = "Đã kết thúc";
+            MockDataService.AddAudit(_account.Username, "Chấm công ra", now.ToString("dd/MM/yyyy HH:mm:ss"));
+            MockDataService.SaveChanges();
             RefreshData();
         }
 
@@ -114,7 +127,7 @@ namespace HRMDesktop.Views.Employee
             RequestedCheckOutBox.Clear();
             AdjustmentReasonBox.Clear();
             AdjustmentErrorText.Visibility = Visibility.Collapsed;
-            AdjustmentDatePicker.SelectedDate = DateTime.Today.AddDays(-1);
+            AdjustmentDatePicker.SelectedDate = SystemTimeService.Today.AddDays(-1);
             AdjustmentOverlay.Visibility = Visibility.Visible;
         }
 
@@ -136,20 +149,20 @@ namespace HRMDesktop.Views.Employee
             if (!IsCurrentEmployeeActive()) { ShowAdjustmentError("Tài khoản hiện không thuộc nhân viên đang làm việc."); return; }
             if (!AdjustmentDatePicker.SelectedDate.HasValue) { ShowAdjustmentError("Hãy chọn ngày cần điều chỉnh."); return; }
             DateTime workDate = AdjustmentDatePicker.SelectedDate.Value.Date;
-            if (workDate > DateTime.Today) { ShowAdjustmentError("Không thể điều chỉnh ngày trong tương lai."); return; }
+            if (workDate > SystemTimeService.Today) { ShowAdjustmentError("Không thể điều chỉnh ngày trong tương lai."); return; }
+            if (!HrmBusinessService.IsWorkingDay(workDate)) { ShowAdjustmentError("Ngày đã chọn không phải ngày làm việc của ca hành chính."); return; }
+            var employee = MockDataService.GetEmployee(_account.EmployeeId);
+            if (!HrmBusinessService.IsEmployedOn(employee, workDate)) { ShowAdjustmentError("Ngày đã chọn nằm ngoài thời gian làm việc của nhân viên."); return; }
 
-            TimeSpan checkIn;
-            TimeSpan checkOut = TimeSpan.Zero;
             string checkInText = RequestedCheckInBox.Text.Trim();
             string checkOutText = RequestedCheckOutBox.Text.Trim();
-            if (!TryParseTime(checkInText, out checkIn)) { ShowAdjustmentError("Giờ vào phải đúng định dạng HH:mm, ví dụ 08:15."); return; }
-            if (!string.IsNullOrWhiteSpace(checkOutText) && !TryParseTime(checkOutText, out checkOut)) { ShowAdjustmentError("Giờ ra phải đúng định dạng HH:mm, ví dụ 17:30."); return; }
-            if (!string.IsNullOrWhiteSpace(checkOutText) && checkOut < checkIn) { ShowAdjustmentError("Giờ ra không được sớm hơn giờ vào."); return; }
-            if (workDate == DateTime.Today && checkIn > DateTime.Now.TimeOfDay) { ShowAdjustmentError("Giờ vào đề xuất không được nằm trong tương lai."); return; }
+            DateTime checkInAt;
+            DateTime? checkOutAt;
+            string timeError;
+            if (!HrmBusinessService.TryBuildAttendanceTimes(workDate, checkInText, checkOutText, out checkInAt, out checkOutAt, out timeError)) { ShowAdjustmentError(timeError); return; }
             if (AdjustmentReasonBox.Text.Trim().Length < 5) { ShowAdjustmentError("Lý do điều chỉnh cần có ít nhất 5 ký tự."); return; }
             if (MockDataService.AttendanceAdjustments.Any(x => x.EmployeeId == _account.EmployeeId && x.WorkDate.Date == workDate && x.Status == "Chờ duyệt")) { ShowAdjustmentError("Bạn đã có một yêu cầu đang chờ duyệt cho ngày này."); return; }
 
-            var employee = MockDataService.GetEmployee(_account.EmployeeId);
             int nextId = MockDataService.AttendanceAdjustments.Count == 0 ? 1 : MockDataService.AttendanceAdjustments.Max(x => x.Id) + 1;
             MockDataService.AttendanceAdjustments.Add(new AttendanceAdjustmentRequest
             {
@@ -162,9 +175,11 @@ namespace HRMDesktop.Views.Employee
                 RequestedCheckIn = checkInText,
                 RequestedCheckOut = checkOutText,
                 Reason = AdjustmentReasonBox.Text.Trim(),
-                SubmittedAt = DateTime.Now,
+                SubmittedAt = SystemTimeService.Now,
                 Status = "Chờ duyệt"
             });
+            MockDataService.AddAudit(_account.Username, "Gửi điều chỉnh chấm công", workDate.ToString("dd/MM/yyyy"));
+            MockDataService.SaveChanges();
             AdjustmentOverlay.Visibility = Visibility.Collapsed;
             RefreshData();
             MessageBox.Show("Yêu cầu đã được gửi đến Admin để kiểm tra.", "Gửi yêu cầu thành công", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -178,7 +193,7 @@ namespace HRMDesktop.Views.Employee
 
         private bool IsOnApprovedLeave(DateTime date)
         {
-            return MockDataService.LeaveRequests.Any(x => x.EmployeeId == _account.EmployeeId && x.Status == "Đã duyệt" && date.Date >= x.FromDate.Date && date.Date <= x.ToDate.Date);
+            return HrmBusinessService.HasApprovedLeave(_account.EmployeeId, date);
         }
 
         private void ShowAdjustmentError(string message)
@@ -187,12 +202,5 @@ namespace HRMDesktop.Views.Employee
             AdjustmentErrorText.Visibility = Visibility.Visible;
         }
 
-        private static bool TryParseTime(string value, out TimeSpan time)
-        {
-            DateTime parsed;
-            bool valid = DateTime.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed);
-            time = valid ? parsed.TimeOfDay : TimeSpan.Zero;
-            return valid;
-        }
     }
 }

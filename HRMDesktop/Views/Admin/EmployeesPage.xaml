@@ -5,13 +5,13 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid>
             <StackPanel><TextBlock Text="Quản lý nhân viên" Style="{StaticResource PageTitle}"/><TextBlock Text="Danh sách nhân sự đang làm việc trong hệ thống." Style="{StaticResource PageSubtitle}"/></StackPanel>
-            <Button Content="+  Thêm nhân viên" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" VerticalAlignment="Center" Click="AddEmployee_Click"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><Button x:Name="ArchiveToggleButton" Content="Hồ sơ lưu trữ" Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" Click="ToggleArchive_Click"/><Button Content="+ Thêm nhân viên" Style="{StaticResource PrimaryButton}" Click="AddEmployee_Click"/></StackPanel>
         </Grid>
         <Grid Grid.Row="1" Margin="0,22,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
             <Border Style="{StaticResource Card}" Margin="0,0,10,0"><StackPanel><TextBlock Text="Tổng nhân viên" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="TotalText" FontSize="24" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel></Border>
             <Border Grid.Column="1" Style="{StaticResource Card}" Margin="5,0"><StackPanel><TextBlock Text="Đang làm việc" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="ActiveText" Foreground="{StaticResource PrimaryBrush}" FontSize="24" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel></Border>
-            <Border Grid.Column="2" Style="{StaticResource Card}" Margin="10,0,0,0"><StackPanel><TextBlock Text="Tổng lương cơ bản" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="SalaryText" Foreground="#2563EB" FontSize="24" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Grid.Column="2" Style="{StaticResource Card}" Margin="10,0,0,0"><StackPanel><TextBlock Text="Quỹ lương nhân sự đang làm việc" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="SalaryText" Foreground="#2563EB" FontSize="24" FontWeight="Bold" Margin="0,8,0,0"/></StackPanel></Border>
         </Grid>
         <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,18,0,0" Padding="14">
             <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="210"/></Grid.ColumnDefinitions>
@@ -29,7 +29,7 @@
                 <DataGridTextColumn Header="CHỨC VỤ" Binding="{Binding Position}" Width="1.1*"/>
                 <DataGridTextColumn Header="LƯƠNG" Binding="{Binding SalaryDisplay}" Width="125"/>
                 <DataGridTextColumn Header="TRẠNG THÁI" Binding="{Binding Status}" Width="115"/>
-                <DataGridTemplateColumn Header="THAO TÁC" Width="150"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal"><Button Content="Sửa" Style="{StaticResource SecondaryButton}" Padding="12,6" Tag="{Binding}" Click="EditEmployee_Click"/><Button Content="Xóa" Style="{StaticResource DangerButton}" Padding="12,6" Margin="7,0,0,0" Tag="{Binding}" Click="DeleteEmployee_Click"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="THAO TÁC" Width="205"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal"><Button Content="Sửa" Padding="12,6" Tag="{Binding}" Click="EditEmployee_Click"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}"><Style.Triggers><DataTrigger Binding="{Binding Status}" Value="Đã nghỉ việc"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style></Button><Button Content="Cho nghỉ" Padding="12,6" Margin="7,0,0,0" Tag="{Binding}" Click="DeleteEmployee_Click"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource DangerButton}"><Style.Triggers><DataTrigger Binding="{Binding Status}" Value="Đã nghỉ việc"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style></Button><Button Content="Khôi phục" Padding="12,6" Tag="{Binding}" Click="RestoreEmployee_Click"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Status}" Value="Đã nghỉ việc"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style></Button></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 
@@ -45,7 +45,7 @@
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,22,0,20">
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                             <StackPanel Margin="0,0,9,16"><TextBlock Text="Họ và tên *" FontWeight="SemiBold"/><TextBox x:Name="EmployeeNameBox" Style="{StaticResource Input}" Margin="0,7,0,0"/></StackPanel>
                             <StackPanel Grid.Column="1" Margin="9,0,0,16"><TextBlock Text="Mã nhân viên *" FontWeight="SemiBold"/><TextBox x:Name="EmployeeCodeBox" Style="{StaticResource Input}" Margin="0,7,0,0"/></StackPanel>
                             <StackPanel Grid.Row="1" Margin="0,0,9,16"><TextBlock Text="Email *" FontWeight="SemiBold"/><TextBox x:Name="EmployeeEmailBox" Style="{StaticResource Input}" Margin="0,7,0,0"/></StackPanel>
@@ -54,8 +54,11 @@
                             <StackPanel Grid.Row="2" Grid.Column="1" Margin="9,0,0,16"><TextBlock Text="Chức vụ *" FontWeight="SemiBold"/><TextBox x:Name="EmployeePositionBox" Style="{StaticResource Input}" Margin="0,7,0,0"/></StackPanel>
                             <StackPanel Grid.Row="3" Margin="0,0,9,16"><TextBlock Text="Ngày sinh *" FontWeight="SemiBold"/><DatePicker x:Name="EmployeeBirthDatePicker" Margin="0,7,0,0"/></StackPanel>
                             <StackPanel Grid.Row="3" Grid.Column="1" Margin="9,0,0,16"><TextBlock Text="Lương cơ bản *" FontWeight="SemiBold"/><TextBox x:Name="EmployeeSalaryBox" Style="{StaticResource Input}" Margin="0,7,0,0" ToolTip="Nhập số tiền, ví dụ 15000000"/></StackPanel>
-                            <StackPanel Grid.Row="4" Margin="0,0,9,0"><TextBlock Text="Trạng thái" FontWeight="SemiBold"/><ComboBox x:Name="EmployeeStatusBox" Margin="0,7,0,0" SelectedIndex="0"><ComboBoxItem Content="Đang làm việc"/><ComboBoxItem Content="Tạm nghỉ"/></ComboBox></StackPanel>
-                            <TextBlock x:Name="EmployeeFormError" Grid.Row="5" Grid.ColumnSpan="2" Foreground="#DC2626" Margin="0,14,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                            <StackPanel Grid.Row="4" Margin="0,0,9,16"><TextBlock Text="Trạng thái" FontWeight="SemiBold"/><ComboBox x:Name="EmployeeStatusBox" Margin="0,7,0,0" SelectedIndex="0"><ComboBoxItem Content="Đang làm việc"/><ComboBoxItem Content="Tạm nghỉ"/><ComboBoxItem Content="Đã nghỉ việc"/></ComboBox></StackPanel>
+                            <StackPanel Grid.Row="4" Grid.Column="1" Margin="9,0,0,16"><TextBlock Text="Ngày vào làm *" FontWeight="SemiBold"/><DatePicker x:Name="EmployeeHireDatePicker" Margin="0,7,0,0"/></StackPanel>
+                            <StackPanel Grid.Row="5" Margin="0,0,9,0"><TextBlock Text="Phép năm được cấp" FontWeight="SemiBold"/><TextBox x:Name="AnnualLeaveAllowanceBox" Style="{StaticResource Input}" Margin="0,7,0,0" ToolTip="Số ngày phép năm, mặc định 12"/></StackPanel>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Margin="9,25,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Text="Tài khoản đăng nhập được tạo tự động theo mã nhân viên; mật khẩu ban đầu là 123."/>
+                            <TextBlock x:Name="EmployeeFormError" Grid.Row="6" Grid.ColumnSpan="2" Foreground="#DC2626" Margin="0,14,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
                         </Grid>
                     </ScrollViewer>
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">

@@ -35,7 +35,7 @@ namespace HRMDesktop.Views.Employee
         private void ApplyMonthFilter()
         {
             var selected = MonthBox.SelectedItem as ComboBoxItem;
-            string month = selected == null ? DateTime.Today.ToString("MM/yyyy") : Convert.ToString(selected.Tag);
+            string month = selected == null ? SystemTimeService.Today.ToString("MM/yyyy") : Convert.ToString(selected.Tag);
             var rows = MockDataService.Salaries.Where(x => x.EmployeeId == _account.EmployeeId && x.Month == month).ToList();
             SalaryGrid.ItemsSource = rows;
             var current = rows.FirstOrDefault();

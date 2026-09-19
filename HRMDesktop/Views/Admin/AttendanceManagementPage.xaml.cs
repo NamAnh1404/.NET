@@ -12,8 +12,8 @@ namespace HRMDesktop.Views.Admin
         public AttendanceManagementPage()
         {
             InitializeComponent();
-            WorkDatePicker.SelectedDate = DateTime.Today;
-            WorkDatePicker.DisplayDateEnd = DateTime.Today;
+            WorkDatePicker.SelectedDate = SystemTimeService.Today;
+            WorkDatePicker.DisplayDateEnd = SystemTimeService.Today;
             ApplyFilter();
         }
 
@@ -24,19 +24,19 @@ namespace HRMDesktop.Views.Admin
 
         private void ApplyFilter()
         {
-            DateTime date = WorkDatePicker == null || !WorkDatePicker.SelectedDate.HasValue ? DateTime.Today : WorkDatePicker.SelectedDate.Value.Date;
+            DateTime date = WorkDatePicker == null || !WorkDatePicker.SelectedDate.HasValue ? SystemTimeService.Today : WorkDatePicker.SelectedDate.Value.Date;
             string keyword = SearchBox == null ? string.Empty : SearchBox.Text.Trim().ToLower();
             string department = "Tất cả phòng ban";
             if (DepartmentFilter != null && DepartmentFilter.SelectedItem is ComboBoxItem) department = Convert.ToString(((ComboBoxItem)DepartmentFilter.SelectedItem).Content);
 
             var records = MockDataService.Attendance.Where(x => x.WorkDate.Date == date).ToList();
             var rows = MockDataService.Employees
-                .Where(x => x.Status == "Đang làm việc")
+                .Where(x => HrmBusinessService.IsEmployedOn(x, date) && (HrmBusinessService.IsWorkingDay(date) || records.Any(record => record.EmployeeId == x.Id)))
                 .Select(employee =>
                 {
                     var record = records.FirstOrDefault(x => x.EmployeeId == employee.Id);
                     if (record != null) return record;
-                    bool onLeave = MockDataService.LeaveRequests.Any(x => x.EmployeeId == employee.Id && x.Status == "Đã duyệt" && date >= x.FromDate.Date && date <= x.ToDate.Date);
+                    bool onLeave = HrmBusinessService.HasApprovedLeave(employee.Id, date);
                     return new AttendanceRecord
                     {
                         EmployeeId = employee.Id,
@@ -46,7 +46,7 @@ namespace HRMDesktop.Views.Admin
                         WorkDate = date,
                         CheckIn = "--",
                         CheckOut = "--",
-                        Status = onLeave ? "Nghỉ phép" : (date < DateTime.Today ? "Vắng mặt" : "Chưa chấm công")
+                        Status = onLeave ? "Nghỉ phép" : (date < SystemTimeService.Today ? "Vắng mặt" : "Chưa chấm công")
                     };
                 })
                 .Where(x => MatchesFilter(x.EmployeeName, x.EmployeeCode, x.Department, keyword, department))
@@ -77,6 +77,27 @@ namespace HRMDesktop.Views.Admin
             UpdateAdjustment((sender as Button).Tag as AttendanceAdjustmentRequest, false);
         }
 
+        private void ViewAdjustmentDetails_Click(object sender, RoutedEventArgs e)
+        {
+            var request = (sender as Button).Tag as AttendanceAdjustmentRequest;
+            if (request == null) return;
+            var original = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == request.EmployeeId && x.WorkDate.Date == request.WorkDate.Date);
+            AdjustmentDetailEmployeeText.Text = request.EmployeeName + "  •  " + request.DisplayCode + "  •  " + request.Department;
+            AdjustmentDetailDateText.Text = request.WorkDateDisplay;
+            AdjustmentDetailStatusText.Text = request.Status;
+            AdjustmentDetailOriginalText.Text = original == null ? "Chưa có bản ghi" : original.CheckIn + " - " + original.CheckOut;
+            AdjustmentDetailRequestedText.Text = request.RequestedTimeDisplay;
+            AdjustmentDetailReasonText.Text = request.Reason;
+            AdjustmentDetailSubmittedText.Text = request.SubmittedAtDisplay;
+            AdjustmentDetailReviewedText.Text = request.ReviewedAt.HasValue ? (request.ReviewedBy ?? "Admin") + " • " + request.ReviewedAt.Value.ToString("dd/MM/yyyy HH:mm") : "Chưa xử lý";
+            AdjustmentDetailOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void CloseAdjustmentDetails_Click(object sender, RoutedEventArgs e)
+        {
+            AdjustmentDetailOverlay.Visibility = Visibility.Collapsed;
+        }
+
         private void UpdateAdjustment(AttendanceAdjustmentRequest request, bool approve)
         {
             if (request == null || !request.CanReview) return;
@@ -84,6 +105,16 @@ namespace HRMDesktop.Views.Admin
             if (employee == null)
             {
                 MessageBox.Show("Không tìm thấy hồ sơ nhân viên của yêu cầu này.", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (approve && !HrmBusinessService.IsEmployedOn(employee, request.WorkDate))
+            {
+                MessageBox.Show("Ngày điều chỉnh nằm ngoài thời gian làm việc của nhân viên.", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (approve && !HrmBusinessService.IsWorkingDay(request.WorkDate))
+            {
+                MessageBox.Show("Ngày điều chỉnh không thuộc ngày làm việc của ca hành chính.", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (approve && MockDataService.LeaveRequests.Any(x => x.EmployeeId == request.EmployeeId && x.Status == "Đã duyệt" && request.WorkDate.Date >= x.FromDate.Date && request.WorkDate.Date <= x.ToDate.Date))
@@ -96,36 +127,37 @@ namespace HRMDesktop.Views.Admin
 
             if (approve)
             {
+                DateTime checkInAt;
+                DateTime? checkOutAt;
+                string validationError;
+                if (!HrmBusinessService.TryBuildAttendanceTimes(request.WorkDate, request.RequestedCheckIn, request.RequestedCheckOut, out checkInAt, out checkOutAt, out validationError))
+                {
+                    MessageBox.Show(validationError, "Dữ liệu điều chỉnh không hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
                 var record = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == request.EmployeeId && x.WorkDate.Date == request.WorkDate.Date);
                 if (record == null)
                 {
                     int nextId = MockDataService.Attendance.Count == 0 ? 1 : MockDataService.Attendance.Max(x => x.Id) + 1;
-                    record = new AttendanceRecord
-                    {
-                        Id = nextId,
-                        EmployeeId = employee.Id,
-                        EmployeeName = employee.FullName,
-                        EmployeeCode = employee.Code,
-                        Department = employee.Department,
-                        WorkDate = request.WorkDate.Date,
-                        CheckIn = request.RequestedCheckIn,
-                        CheckOut = string.IsNullOrWhiteSpace(request.RequestedCheckOut) ? "--" : request.RequestedCheckOut
-                    };
+                    record = HrmBusinessService.CreateAttendanceRecord(nextId, employee, request.WorkDate, checkInAt, checkOutAt);
                     MockDataService.Attendance.Add(record);
                 }
                 else
                 {
-                    record.CheckIn = request.RequestedCheckIn;
-                    if (!string.IsNullOrWhiteSpace(request.RequestedCheckOut)) record.CheckOut = request.RequestedCheckOut;
+                    record.CheckInAt = checkInAt;
+                    record.CheckOutAt = checkOutAt;
                 }
-                record.Status = record.CheckOut == "--" ? (record.WorkDate.Date == DateTime.Today ? "Đang làm việc" : "Thiếu giờ ra") : "Đã kết thúc";
+                record.Status = !record.CheckOutAt.HasValue ? (record.WorkDate.Date == SystemTimeService.Today ? "Đang làm việc" : "Thiếu giờ ra") : "Đã kết thúc";
                 request.Status = "Đã duyệt";
             }
             else
             {
                 request.Status = "Từ chối";
             }
-            request.ReviewedAt = DateTime.Now;
+            request.ReviewedAt = SystemTimeService.Now;
+            request.ReviewedBy = "admin";
+            MockDataService.AddAudit("admin", action + " điều chỉnh chấm công", request.EmployeeCode + " - " + request.WorkDateDisplay);
+            MockDataService.SaveChanges();
             ApplyFilter();
             MessageBox.Show("Yêu cầu đã được cập nhật: " + request.Status + ".", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Information);
         }

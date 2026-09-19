@@ -1,23 +1,59 @@
+using System.Linq;
 using HRMDesktop.Models;
 
 namespace HRMDesktop.Services
 {
     public static class AuthService
     {
+        public static string LastError { get; private set; }
+
         public static UserAccount Login(string username, string password)
         {
+            LastError = null;
             username = (username ?? string.Empty).Trim().ToLower();
-            if (username == "admin" && password == "123")
+            var credential = MockDataService.Credentials.FirstOrDefault(x => x.Username == username);
+            if (credential == null)
             {
-                return new UserAccount { EmployeeId = 0, Username = "admin", FullName = "Quản trị viên HRM", Role = "Admin", Department = "Nhân sự", Email = "admin@hrm.local" };
+                LastError = "Tên đăng nhập không tồn tại.";
+                return null;
             }
-            if ((username == "employee" || username == "user") && password == "123")
+            if (credential.IsLocked)
             {
-                var employee = MockDataService.GetEmployee(1);
-                if (employee == null || employee.Status != "Đang làm việc") return null;
-                return new UserAccount { EmployeeId = employee.Id, Username = "employee", FullName = employee.FullName, Role = "Employee", Department = employee.Department, Email = employee.Email };
+                LastError = "Tài khoản đã bị khóa. Hãy liên hệ Admin để kiểm tra trạng thái nhân sự.";
+                return null;
             }
-            return null;
+            if (!PasswordSecurity.Verify(password, credential))
+            {
+                LastError = "Mật khẩu không đúng.";
+                return null;
+            }
+            if (credential.Role == "Admin")
+            {
+                return BuildAccount(credential, "Quản trị viên HRM", "Nhân sự", "admin@hrm.local");
+            }
+            var employee = MockDataService.GetEmployee(credential.EmployeeId);
+            if (employee == null || employee.Status != "Đang làm việc" || !HrmBusinessService.IsEmployedOn(employee, SystemTimeService.Today))
+            {
+                LastError = "Tài khoản không thuộc nhân viên đang làm việc.";
+                return null;
+            }
+            return BuildAccount(credential, employee.FullName, employee.Department, employee.Email);
+        }
+
+        private static UserAccount BuildAccount(UserCredential credential, string fullName, string department, string email)
+        {
+            return new UserAccount
+            {
+                EmployeeId = credential.EmployeeId,
+                Username = credential.Username,
+                FullName = fullName,
+                Role = credential.Role,
+                Department = department,
+                Email = email,
+                AttendanceNotificationEnabled = credential.AttendanceNotificationEnabled,
+                LeaveNotificationEnabled = credential.LeaveNotificationEnabled,
+                SalaryNotificationEnabled = credential.SalaryNotificationEnabled
+            };
         }
     }
 }

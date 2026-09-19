@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Globalization;
+using System.Xml.Serialization;
 
 namespace HRMDesktop.Models
 {
@@ -47,18 +48,22 @@ namespace HRMDesktop.Models
         public string Department { get; set; }
         public string Position { get; set; }
         public DateTime DateOfBirth { get; set; }
+        public DateTime HireDate { get; set; }
+        public DateTime? TerminationDate { get; set; }
+        public int AnnualLeaveAllowance { get; set; }
         public decimal BaseSalary { get; set; }
         public string Status { get; set; }
         public string Initial { get { return string.IsNullOrWhiteSpace(FullName) ? "N" : FullName.Substring(0, 1).ToUpper(); } }
         public string DisplayName { get { return FullName; } }
         public string DisplayCode { get { return Code; } }
         public string SalaryDisplay { get { return BaseSalary.ToString("N0") + " đ"; } }
+        public string HireDateDisplay { get { return HireDate.ToString("dd/MM/yyyy"); } }
     }
 
     public class AttendanceRecord : ObservableModel
     {
-        private string _checkIn;
-        private string _checkOut;
+        private DateTime? _checkInAt;
+        private DateTime? _checkOutAt;
         private string _status;
         public int Id { get; set; }
         public int EmployeeId { get; set; }
@@ -66,8 +71,24 @@ namespace HRMDesktop.Models
         public string EmployeeCode { get; set; }
         public string Department { get; set; }
         public DateTime WorkDate { get; set; }
-        public string CheckIn { get { return _checkIn; } set { _checkIn = value; Notify(); Notify("AttendanceResult"); Notify("WorkDurationDisplay"); } }
-        public string CheckOut { get { return _checkOut; } set { _checkOut = value; Notify(); Notify("AttendanceResult"); Notify("WorkDurationDisplay"); } }
+        public DateTime? CheckInAt { get { return _checkInAt; } set { _checkInAt = value; Notify(); Notify("CheckIn"); Notify("AttendanceResult"); Notify("WorkDurationDisplay"); } }
+        public DateTime? CheckOutAt { get { return _checkOutAt; } set { _checkOutAt = value; Notify(); Notify("CheckOut"); Notify("AttendanceResult"); Notify("WorkDurationDisplay"); } }
+        public TimeSpan ScheduledStart { get; set; }
+        public TimeSpan ScheduledEnd { get; set; }
+        public int GraceMinutes { get; set; }
+        public bool IsOvernightShift { get; set; }
+        [XmlIgnore]
+        public string CheckIn
+        {
+            get { return CheckInAt.HasValue ? CheckInAt.Value.ToString("HH:mm") : "--"; }
+            set { CheckInAt = ParseWorkTime(value, false); }
+        }
+        [XmlIgnore]
+        public string CheckOut
+        {
+            get { return CheckOutAt.HasValue ? CheckOutAt.Value.ToString("HH:mm") : "--"; }
+            set { CheckOutAt = ParseWorkTime(value, true); }
+        }
         public string Status { get { return _status; } set { _status = value; Notify(); Notify("AttendanceResult"); } }
         public string Initial { get { return string.IsNullOrWhiteSpace(EmployeeName) ? "N" : EmployeeName.Substring(0, 1).ToUpper(); } }
         public string DisplayName { get { return EmployeeName; } }
@@ -77,10 +98,8 @@ namespace HRMDesktop.Models
         {
             get
             {
-                TimeSpan checkIn;
-                TimeSpan checkOut;
-                if (!TryParseTime(CheckIn, out checkIn) || !TryParseTime(CheckOut, out checkOut) || checkOut < checkIn) return "--";
-                TimeSpan duration = checkOut - checkIn;
+                if (!CheckInAt.HasValue || !CheckOutAt.HasValue || CheckOutAt.Value < CheckInAt.Value) return "--";
+                TimeSpan duration = CheckOutAt.Value - CheckInAt.Value;
                 return ((int)duration.TotalHours).ToString("00") + " giờ " + duration.Minutes.ToString("00") + " phút";
             }
         }
@@ -90,17 +109,30 @@ namespace HRMDesktop.Models
             {
                 if (Status == "Nghỉ phép") return "Có phép";
                 if (Status == "Vắng mặt") return "Vắng mặt";
-                TimeSpan checkIn;
-                if (!TryParseTime(CheckIn, out checkIn)) return "--";
-                bool late = checkIn > new TimeSpan(8, 15, 0);
-                TimeSpan checkOut;
-                if (!TryParseTime(CheckOut, out checkOut)) return late ? "Đi muộn" : "Đúng giờ";
-                bool early = checkOut < new TimeSpan(17, 0, 0);
+                if (!CheckInAt.HasValue) return "--";
+                TimeSpan start = ScheduledStart == TimeSpan.Zero ? new TimeSpan(8, 0, 0) : ScheduledStart;
+                TimeSpan end = ScheduledEnd == TimeSpan.Zero ? new TimeSpan(17, 30, 0) : ScheduledEnd;
+                int grace = GraceMinutes <= 0 ? 15 : GraceMinutes;
+                DateTime scheduledStartAt = WorkDate.Date.Add(start);
+                DateTime scheduledEndAt = WorkDate.Date.Add(end);
+                if (IsOvernightShift || end <= start) scheduledEndAt = scheduledEndAt.AddDays(1);
+                bool late = CheckInAt.Value > scheduledStartAt.AddMinutes(grace);
+                if (!CheckOutAt.HasValue) return late ? "Đi muộn" : "Đúng giờ";
+                bool early = CheckOutAt.Value < scheduledEndAt;
                 if (late && early) return "Đi muộn, về sớm";
                 if (late) return "Đi muộn";
                 if (early) return "Về sớm";
                 return "Đủ công";
             }
+        }
+
+        private DateTime? ParseWorkTime(string value, bool isCheckOut)
+        {
+            TimeSpan parsed;
+            if (!TryParseTime(value, out parsed)) return null;
+            DateTime result = WorkDate.Date.Add(parsed);
+            if (isCheckOut && CheckInAt.HasValue && (IsOvernightShift || result < CheckInAt.Value)) result = result.AddDays(1);
+            return result;
         }
 
         private static bool TryParseTime(string value, out TimeSpan time)
@@ -126,6 +158,7 @@ namespace HRMDesktop.Models
         public string Reason { get; set; }
         public DateTime SubmittedAt { get; set; }
         public DateTime? ReviewedAt { get; set; }
+        public string ReviewedBy { get; set; }
         public string Status { get { return _status; } set { _status = value; Notify(); Notify("CanReview"); } }
         public bool CanReview { get { return Status == "Chờ duyệt"; } }
         public string Initial { get { return string.IsNullOrWhiteSpace(EmployeeName) ? "N" : EmployeeName.Substring(0, 1).ToUpper(); } }
@@ -148,6 +181,8 @@ namespace HRMDesktop.Models
         public DateTime ToDate { get; set; }
         public DateTime SubmittedAt { get; set; }
         public DateTime? ReviewedAt { get; set; }
+        public DateTime? CancelledAt { get; set; }
+        public string ReviewedBy { get; set; }
         public string Reason { get; set; }
         public string Status { get { return _status; } set { _status = value; Notify(); Notify("CanReview"); Notify("CanCancel"); } }
         public bool CanReview { get { return Status == "Chờ duyệt"; } }
@@ -159,15 +194,7 @@ namespace HRMDesktop.Models
         public string SubmittedAtDisplay { get { return SubmittedAt == default(DateTime) ? "--" : SubmittedAt.ToString("dd/MM/yyyy HH:mm"); } }
         public int TotalDays
         {
-            get
-            {
-                int total = 0;
-                for (DateTime date = FromDate.Date; date <= ToDate.Date; date = date.AddDays(1))
-                {
-                    if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday) total++;
-                }
-                return total;
-            }
+            get { return HRMDesktop.Services.HrmBusinessService.CountWorkingDays(FromDate, ToDate); }
         }
     }
 
@@ -178,10 +205,25 @@ namespace HRMDesktop.Models
         public int EmployeeId { get; set; }
         public string EmployeeName { get; set; }
         public string EmployeeCode { get; set; }
-        public string Month { get; set; }
+        public DateTime PeriodStart { get; set; }
+        [XmlIgnore]
+        public string Month
+        {
+            get { return (PeriodStart == default(DateTime) ? HRMDesktop.Services.SystemTimeService.Today : PeriodStart).ToString("MM/yyyy"); }
+            set
+            {
+                DateTime parsed;
+                PeriodStart = DateTime.TryParseExact("01/" + value, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed)
+                    ? parsed.Date : HRMDesktop.Services.SystemTimeService.Today.AddDays(1 - HRMDesktop.Services.SystemTimeService.Today.Day);
+            }
+        }
         public decimal BaseSalary { get; set; }
         public decimal Bonus { get; set; }
         public decimal Deduction { get; set; }
+        public DateTime? PaidAt { get; set; }
+        public string PaidBy { get; set; }
+        public string PaymentMethod { get; set; }
+        public string TransactionReference { get; set; }
         public string Status { get { return _status; } set { _status = value; Notify(); } }
         public string Initial { get { return string.IsNullOrWhiteSpace(EmployeeName) ? "N" : EmployeeName.Substring(0, 1).ToUpper(); } }
         public string DisplayName { get { return EmployeeName; } }
@@ -191,6 +233,61 @@ namespace HRMDesktop.Models
         public string BonusDisplay { get { return Bonus.ToString("N0") + " đ"; } }
         public string DeductionDisplay { get { return Deduction.ToString("N0") + " đ"; } }
         public string NetSalaryDisplay { get { return NetSalary.ToString("N0") + " đ"; } }
+        public string PaymentDisplay { get { return PaidAt.HasValue ? PaidAt.Value.ToString("dd/MM/yyyy HH:mm") : "--"; } }
+    }
+
+    public class SalaryHistory
+    {
+        public int Id { get; set; }
+        public int EmployeeId { get; set; }
+        public DateTime EffectiveFrom { get; set; }
+        public decimal BaseSalary { get; set; }
+    }
+
+    public class EmploymentPeriod
+    {
+        public int Id { get; set; }
+        public int EmployeeId { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
+
+    public class WorkShift
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public TimeSpan StartTime { get; set; }
+        public TimeSpan EndTime { get; set; }
+        public int GraceMinutes { get; set; }
+        public bool IsOvernight { get; set; }
+    }
+
+    public class Holiday
+    {
+        public DateTime Date { get; set; }
+        public string Name { get; set; }
+    }
+
+    public class UserCredential
+    {
+        public int EmployeeId { get; set; }
+        public string Username { get; set; }
+        public string PasswordSalt { get; set; }
+        public string PasswordHash { get; set; }
+        public string Role { get; set; }
+        public bool IsLocked { get; set; }
+        public bool AttendanceNotificationEnabled { get; set; }
+        public bool LeaveNotificationEnabled { get; set; }
+        public bool SalaryNotificationEnabled { get; set; }
+    }
+
+    public class AuditLog
+    {
+        public int Id { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string Actor { get; set; }
+        public string Action { get; set; }
+        public string Details { get; set; }
     }
 
 }

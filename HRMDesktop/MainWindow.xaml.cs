@@ -6,6 +6,7 @@ using HRMDesktop.Models;
 using HRMDesktop.Views;
 using HRMDesktop.Views.Admin;
 using HRMDesktop.Views.Employee;
+using HRMDesktop.Services;
 
 namespace HRMDesktop
 {
@@ -22,7 +23,7 @@ namespace HRMDesktop
             FullNameText.Text = account.FullName;
             RoleText.Text = account.RoleDisplay;
             AvatarText.Text = account.Initial;
-            CurrentDateText.Text = DateTime.Today.ToString("dddd, dd/MM/yyyy");
+            CurrentDateText.Text = SystemTimeService.Today.ToString("dddd, dd/MM/yyyy");
             BuildNavigation();
             Navigate("dashboard", "Tổng quan");
         }

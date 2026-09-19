@@ -63,7 +63,11 @@
     <Compile Include="MainWindow.xaml.cs"><DependentUpon>MainWindow.xaml</DependentUpon></Compile>
     <Compile Include="Models\HrmModels.cs" />
     <Compile Include="Services\AuthService.cs" />
+    <Compile Include="Services\DataPersistenceService.cs" />
+    <Compile Include="Services\HrmBusinessService.cs" />
     <Compile Include="Services\MockDataService.cs" />
+    <Compile Include="Services\PasswordSecurity.cs" />
+    <Compile Include="Services\SystemTimeService.cs" />
     <Compile Include="Views\DashboardPage.xaml.cs"><DependentUpon>DashboardPage.xaml</DependentUpon></Compile>
     <Compile Include="Views\SettingsPage.xaml.cs"><DependentUpon>SettingsPage.xaml</DependentUpon></Compile>
     <Compile Include="Views\Admin\EmployeesPage.xaml.cs"><DependentUpon>EmployeesPage.xaml</DependentUpon></Compile>

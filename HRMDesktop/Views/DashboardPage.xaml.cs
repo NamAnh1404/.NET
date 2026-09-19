@@ -15,21 +15,21 @@ namespace HRMDesktop.Views
             SubtitleText.Text = account.IsAdmin ? "Theo dõi nhanh tình hình nhân sự trong hôm nay." : "Tổng hợp thông tin công việc và quyền lợi của bạn.";
             if (account.IsAdmin)
             {
-                var activeEmployees = MockDataService.Employees.Where(x => x.Status == "Đang làm việc").ToList();
-                var currentMonth = DateTime.Today.ToString("MM/yyyy");
+                var activeEmployees = MockDataService.Employees.Where(x => x.Status == "Đang làm việc" && HrmBusinessService.IsEmployedOn(x, SystemTimeService.Today)).ToList();
+                var currentMonth = SystemTimeService.Today.ToString("MM/yyyy");
                 RecentList.ItemsSource = MockDataService.Attendance.OrderByDescending(x => x.WorkDate).ThenByDescending(x => x.Id).Take(5).ToList();
                 PendingLeaveText.Text = MockDataService.LeaveRequests.Count(x => x.Status == "Chờ duyệt") + " đơn";
-                OnlineText.Text = MockDataService.Attendance.Count(x => x.WorkDate.Date == DateTime.Today && x.Status == "Đang làm việc") + " người";
+                OnlineText.Text = MockDataService.Attendance.Where(x => x.WorkDate.Date == SystemTimeService.Today && x.Status == "Đang làm việc" && activeEmployees.Any(employee => employee.Id == x.EmployeeId)).Select(x => x.EmployeeId).Distinct().Count() + " người";
                 Metric1Label.Text = "Tổng nhân viên"; Metric1Value.Text = activeEmployees.Count.ToString(); Metric1Note.Text = "Đang làm việc trong hệ thống";
-                Metric2Label.Text = "Có mặt hôm nay"; Metric2Value.Text = MockDataService.Attendance.Count(x => x.WorkDate.Date == DateTime.Today && x.CheckIn != "--").ToString(); Metric2Note.Text = "Đã ghi nhận giờ vào";
+                Metric2Label.Text = "Có mặt hôm nay"; Metric2Value.Text = MockDataService.Attendance.Where(x => x.WorkDate.Date == SystemTimeService.Today && x.CheckInAt.HasValue && activeEmployees.Any(employee => employee.Id == x.EmployeeId)).Select(x => x.EmployeeId).Distinct().Count().ToString(); Metric2Note.Text = "Đã ghi nhận giờ vào";
                 Metric3Label.Text = "Tổng quỹ lương"; Metric3Value.Text = MockDataService.Salaries.Where(x => x.Month == currentMonth).Sum(x => x.NetSalary).ToString("N0") + " đ"; Metric3Note.Text = "Tháng " + currentMonth;
                 Metric4Label.Text = "Chờ phê duyệt"; Metric4Value.Text = MockDataService.LeaveRequests.Count(x => x.Status == "Chờ duyệt").ToString(); Metric4Note.Text = "Đơn nghỉ phép";
                 DashboardNote.Text = "Các chỉ số được tổng hợp từ dữ liệu nhân viên, chấm công, nghỉ phép và bảng lương.";
             }
             else
             {
-                var today = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == account.EmployeeId && x.WorkDate.Date == DateTime.Today);
-                var salary = MockDataService.Salaries.FirstOrDefault(x => x.EmployeeId == account.EmployeeId && x.Month == DateTime.Today.ToString("MM/yyyy"));
+                var today = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == account.EmployeeId && x.WorkDate.Date == SystemTimeService.Today);
+                var salary = MockDataService.Salaries.FirstOrDefault(x => x.EmployeeId == account.EmployeeId && x.Month == SystemTimeService.Today.ToString("MM/yyyy"));
                 var myLeaves = MockDataService.LeaveRequests.Where(x => x.EmployeeId == account.EmployeeId).ToList();
                 RecentList.ItemsSource = MockDataService.Attendance.Where(x => x.EmployeeId == account.EmployeeId).OrderByDescending(x => x.WorkDate).ThenByDescending(x => x.Id).Take(5).ToList();
                 PendingLeaveLabel.Text = "Đơn của bạn đang chờ duyệt";

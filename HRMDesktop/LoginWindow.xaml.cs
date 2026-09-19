@@ -20,6 +20,7 @@ namespace HRMDesktop
             var account = AuthService.Login(UsernameBox.Text, PasswordBox.Password);
             if (account == null)
             {
+                ErrorText.Text = string.IsNullOrWhiteSpace(AuthService.LastError) ? "Tên đăng nhập hoặc mật khẩu không đúng." : AuthService.LastError;
                 ErrorText.Visibility = Visibility.Visible;
                 PasswordBox.SelectAll();
                 PasswordBox.Focus();

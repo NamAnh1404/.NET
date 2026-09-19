@@ -13,8 +13,21 @@
                 <DataGridTextColumn Header="NGÀY CÔNG" Binding="{Binding TotalDays}" Width="85"/>
                 <DataGridTextColumn Header="LÝ DO" Binding="{Binding Reason}" Width="1.6*"/>
                 <DataGridTextColumn Header="TRẠNG THÁI" Binding="{Binding Status}" Width="105"/>
-                <DataGridTemplateColumn Header="XỬ LÝ" Width="165"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal"><Button Content="Duyệt" Style="{StaticResource PrimaryButton}" Padding="10,6" Tag="{Binding}" IsEnabled="{Binding CanReview}" Click="Approve_Click"/><Button Content="Từ chối" Style="{StaticResource DangerButton}" Padding="10,6" Margin="7,0,0,0" Tag="{Binding}" IsEnabled="{Binding CanReview}" Click="Reject_Click"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="XỬ LÝ" Width="245"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal"><Button Content="Chi tiết" Style="{StaticResource SecondaryButton}" Padding="10,6" Tag="{Binding}" Click="ViewLeaveDetails_Click"/><Button Content="Duyệt" Style="{StaticResource PrimaryButton}" Padding="10,6" Margin="7,0,0,0" Tag="{Binding}" IsEnabled="{Binding CanReview}" Click="Approve_Click"/><Button Content="Từ chối" Style="{StaticResource DangerButton}" Padding="10,6" Margin="7,0,0,0" Tag="{Binding}" IsEnabled="{Binding CanReview}" Click="Reject_Click"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
+
+        <Grid x:Name="LeaveDetailOverlay" Grid.RowSpan="3" Panel.ZIndex="30" Background="#990F172A" Visibility="Collapsed">
+            <Border Width="570" Background="White" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <Grid><StackPanel><TextBlock Text="Chi tiết đơn nghỉ phép" FontSize="21" FontWeight="SemiBold"/><TextBlock x:Name="LeaveDetailEmployeeText" Foreground="{StaticResource MutedBrush}" Margin="0,5,0,0"/></StackPanel><Button Content="×" Style="{StaticResource SecondaryButton}" Width="34" Height="34" Padding="0" FontSize="20" HorizontalAlignment="Right" Click="CloseLeaveDetails_Click"/></Grid>
+                    <Grid Margin="0,22,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Loại nghỉ" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="LeaveDetailTypeText" FontWeight="SemiBold" Margin="0,5,0,0"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="Trạng thái" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="LeaveDetailStatusText" FontWeight="SemiBold" Margin="0,5,0,0"/></StackPanel></Grid>
+                    <Grid Margin="0,18,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Thời gian nghỉ" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="LeaveDetailDatesText" FontWeight="SemiBold" Margin="0,5,0,0"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="Số ngày công" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="LeaveDetailDaysText" FontWeight="SemiBold" Margin="0,5,0,0"/></StackPanel></Grid>
+                    <Border Background="#F8FAFC" CornerRadius="5" Padding="14" Margin="0,18,0,0"><StackPanel><TextBlock Text="Lý do" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="LeaveDetailReasonText" TextWrapping="Wrap" LineHeight="20" Margin="0,7,0,0"/></StackPanel></Border>
+                    <Grid Margin="0,18,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Gửi lúc" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="LeaveDetailSubmittedText" Margin="0,5,0,0"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="Thông tin xử lý" Foreground="{StaticResource MutedBrush}"/><TextBlock x:Name="LeaveDetailReviewedText" TextWrapping="Wrap" Margin="0,5,0,0"/></StackPanel></Grid>
+                    <Button Content="Đóng" Style="{StaticResource SecondaryButton}" Width="100" HorizontalAlignment="Right" Margin="0,24,0,0" Click="CloseLeaveDetails_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Page>
