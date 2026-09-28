@@ -60,6 +60,7 @@ namespace HRMDesktop.Views.Admin
         private void AddEmployee_Click(object sender, RoutedEventArgs e)
         {
             _editingEmployee = null;
+            EmployeeCodeBox.IsReadOnly = false;
             int id = HrmDataService.Employees.Count == 0 ? 1 : HrmDataService.Employees.Max(x => x.Id) + 1;
             EmployeeNameBox.Clear();
             EmployeeCodeBox.Text = "NV" + id.ToString("000");
@@ -84,6 +85,7 @@ namespace HRMDesktop.Views.Admin
             var employee = (sender as Button).Tag as HRMDesktop.Models.Employee;
             if (employee == null) return;
             _editingEmployee = employee;
+            EmployeeCodeBox.IsReadOnly = true;
             EmployeeNameBox.Text = employee.FullName;
             EmployeeCodeBox.Text = employee.Code;
             EmployeeEmailBox.Text = employee.Email;
@@ -170,6 +172,13 @@ namespace HRMDesktop.Views.Admin
                 ShowFormError("Số ngày phép năm phải từ 0 đến 30 ngày.");
                 return;
             }
+            int committedAnnualLeave = _editingEmployee == null ? 0 :
+                HrmBusinessService.GetAnnualLeaveCommittedDays(_editingEmployee.Id, SystemTimeService.Today.Year);
+            if (annualLeaveAllowance < committedAnnualLeave)
+            {
+                ShowFormError("Phép năm được cấp không được thấp hơn " + committedAnnualLeave + " ngày đang chờ duyệt hoặc đã duyệt trong năm nay.");
+                return;
+            }
 
             if (_editingEmployee == null)
             {
@@ -218,8 +227,17 @@ namespace HRMDesktop.Views.Admin
                 if (credential != null) credential.IsLocked = status != "Đang làm việc";
                 if (oldSalary != salary)
                 {
-                    int historyId = HrmDataService.SalaryHistories.Count == 0 ? 1 : HrmDataService.SalaryHistories.Max(x => x.Id) + 1;
-                    HrmDataService.SalaryHistories.Add(new SalaryHistory { Id = historyId, EmployeeId = _editingEmployee.Id, EffectiveFrom = new DateTime(SystemTimeService.Today.Year, SystemTimeService.Today.Month, 1), BaseSalary = salary });
+                    DateTime effectiveMonth = new DateTime(SystemTimeService.Today.Year, SystemTimeService.Today.Month, 1);
+                    var currentHistory = HrmDataService.SalaryHistories.FirstOrDefault(x => x.EmployeeId == _editingEmployee.Id && x.EffectiveFrom.Date == effectiveMonth);
+                    if (currentHistory == null)
+                    {
+                        int historyId = HrmDataService.SalaryHistories.Count == 0 ? 1 : HrmDataService.SalaryHistories.Max(x => x.Id) + 1;
+                        HrmDataService.SalaryHistories.Add(new SalaryHistory { Id = historyId, EmployeeId = _editingEmployee.Id, EffectiveFrom = effectiveMonth, BaseSalary = salary });
+                    }
+                    else
+                    {
+                        currentHistory.BaseSalary = salary;
+                    }
                 }
                 HrmDataService.AddAudit("admin", "Cập nhật nhân viên", code + " - " + fullName);
                 EmployeeGrid.Items.Refresh();

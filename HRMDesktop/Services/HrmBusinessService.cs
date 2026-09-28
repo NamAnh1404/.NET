@@ -69,6 +69,21 @@ namespace HRMDesktop.Services
             return Math.Max(0, employee.AnnualLeaveAllowance - GetAnnualLeaveUsed(employee.Id, year));
         }
 
+        public static int GetAnnualLeaveAvailable(Employee employee, int year, int excludingRequestId = 0)
+        {
+            if (employee == null) return 0;
+            return Math.Max(0, employee.AnnualLeaveAllowance - GetAnnualLeaveCommittedDays(employee.Id, year, excludingRequestId));
+        }
+
+        public static int GetAnnualLeaveCommittedDays(int employeeId, int year, int excludingRequestId = 0)
+        {
+            return HrmDataService.LeaveRequests
+                .Where(x => x.EmployeeId == employeeId && x.Id != excludingRequestId &&
+                            (x.Status == "Chờ duyệt" || x.Status == "Đã duyệt") &&
+                            x.LeaveType == "Nghỉ phép năm" && x.FromDate.Year == year)
+                .Sum(x => CountWorkingDays(x.FromDate, x.ToDate));
+        }
+
         public static bool HasApprovedLeave(int employeeId, DateTime date)
         {
             return HrmDataService.LeaveRequests.Any(x => x.EmployeeId == employeeId && x.Status == "Đã duyệt" && date.Date >= x.FromDate.Date && date.Date <= x.ToDate.Date);

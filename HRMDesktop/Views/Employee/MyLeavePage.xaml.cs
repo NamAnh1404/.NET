@@ -21,7 +21,7 @@ namespace HRMDesktop.Views.Employee
         {
             LeaveGrid.ItemsSource = HrmDataService.LeaveRequests.Where(x => x.EmployeeId == _account.EmployeeId).OrderByDescending(x => x.Id).ToList();
             var employee = HrmDataService.GetEmployee(_account.EmployeeId);
-            LeaveBalanceText.Text = HrmBusinessService.GetAnnualLeaveRemaining(employee, SystemTimeService.Today.Year) + " ngày";
+            LeaveBalanceText.Text = HrmBusinessService.GetAnnualLeaveAvailable(employee, SystemTimeService.Today.Year) + " ngày";
         }
         private void Submit_Click(object sender, RoutedEventArgs e)
         {
@@ -47,7 +47,7 @@ namespace HRMDesktop.Views.Employee
             string leaveType = selectedType == null ? "Nghỉ phép năm" : Convert.ToString(selectedType.Content);
             if (leaveType == "Nghỉ phép năm" && fromDate.Year != toDate.Year)
             { MessageBox.Show("Đơn nghỉ phép năm không được kéo dài qua hai năm. Hãy tách thành hai đơn để tính đúng số dư từng năm.", "Thời gian chưa hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            if (leaveType == "Nghỉ phép năm" && requestedDays > HrmBusinessService.GetAnnualLeaveRemaining(currentEmployee, fromDate.Year))
+            if (leaveType == "Nghỉ phép năm" && requestedDays > HrmBusinessService.GetAnnualLeaveAvailable(currentEmployee, fromDate.Year))
             { MessageBox.Show("Số ngày yêu cầu vượt quá số phép năm còn lại.", "Không đủ phép năm", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             bool alreadyWorked = HrmDataService.Attendance.Any(x => x.EmployeeId == _account.EmployeeId && x.CheckInAt.HasValue && x.WorkDate.Date >= fromDate && x.WorkDate.Date <= toDate);
             if (alreadyWorked)
