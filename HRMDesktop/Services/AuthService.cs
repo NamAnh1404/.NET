@@ -11,7 +11,7 @@ namespace HRMDesktop.Services
         {
             LastError = null;
             username = (username ?? string.Empty).Trim().ToLower();
-            var credential = MockDataService.Credentials.FirstOrDefault(x => x.Username == username);
+            var credential = HrmDataService.Credentials.FirstOrDefault(x => x.Username == username);
             if (credential == null)
             {
                 LastError = "Tên đăng nhập không tồn tại.";
@@ -31,7 +31,7 @@ namespace HRMDesktop.Services
             {
                 return BuildAccount(credential, "Quản trị viên HRM", "Nhân sự", "admin@hrm.local");
             }
-            var employee = MockDataService.GetEmployee(credential.EmployeeId);
+            var employee = HrmDataService.GetEmployee(credential.EmployeeId);
             if (employee == null || employee.Status != "Đang làm việc" || !HrmBusinessService.IsEmployedOn(employee, SystemTimeService.Today))
             {
                 LastError = "Tài khoản không thuộc nhân viên đang làm việc.";

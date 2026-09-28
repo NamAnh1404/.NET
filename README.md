@@ -7,6 +7,8 @@
 - Visual Studio Community 2017 (nickname: 2)
 - .NET Framework 4.6.1
 - WPF
+- SQL Server LocalDB
+- Entity Framework 6.4.4 Database First
 - Solution: `HRMDesktop.sln`
 
 ## Tài khoản dùng thử
@@ -41,4 +43,6 @@
 2. Chọn cấu hình `Debug` và `Any CPU`.
 3. Nhấn `F5` để chạy.
 
-Phiên bản hiện tại dùng `MockDataService` để hoàn thiện và kiểm thử luồng giao diện. Bước tiếp theo là thay service này bằng lớp gọi ASP.NET Core Web API và cơ sở dữ liệu MySQL/Railway.
+Ứng dụng kết nối database `HRMDatabase` trên instance `(LocalDB)\MSSQLLocalDB`. Schema nguồn nằm tại `HRMDesktop/Database/HRMDatabase.sql`; mô hình Database First, Entity và `HRMDatabaseEntities` nằm trong `HRMDesktop/Data/Generated`.
+
+Lần chạy đầu, ứng dụng tự tạo database theo schema. Nếu máy đang có dữ liệu XML của phiên bản cũ, dữ liệu đó được nhập một lần vào SQL Server; từ thời điểm này mọi thao tác thêm, sửa, chấm công, duyệt đơn, trả lương và đổi mật khẩu đều được lưu bằng Entity Framework.

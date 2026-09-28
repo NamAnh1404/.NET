@@ -15,7 +15,7 @@ namespace HRMDesktop.Views.Employee
         {
             InitializeComponent();
             _account = account;
-            var months = MockDataService.Salaries.Where(x => x.EmployeeId == account.EmployeeId)
+            var months = HrmDataService.Salaries.Where(x => x.EmployeeId == account.EmployeeId)
                 .Select(x => x.Month).Distinct()
                 .OrderByDescending(x => DateTime.ParseExact(x, "MM/yyyy", CultureInfo.InvariantCulture))
                 .ToList();
@@ -36,7 +36,7 @@ namespace HRMDesktop.Views.Employee
         {
             var selected = MonthBox.SelectedItem as ComboBoxItem;
             string month = selected == null ? SystemTimeService.Today.ToString("MM/yyyy") : Convert.ToString(selected.Tag);
-            var rows = MockDataService.Salaries.Where(x => x.EmployeeId == _account.EmployeeId && x.Month == month).ToList();
+            var rows = HrmDataService.Salaries.Where(x => x.EmployeeId == _account.EmployeeId && x.Month == month).ToList();
             SalaryGrid.ItemsSource = rows;
             var current = rows.FirstOrDefault();
             BaseText.Text = current == null ? "--" : current.BaseSalaryDisplay;

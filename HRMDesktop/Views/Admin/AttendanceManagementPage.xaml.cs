@@ -29,8 +29,8 @@ namespace HRMDesktop.Views.Admin
             string department = "Tất cả phòng ban";
             if (DepartmentFilter != null && DepartmentFilter.SelectedItem is ComboBoxItem) department = Convert.ToString(((ComboBoxItem)DepartmentFilter.SelectedItem).Content);
 
-            var records = MockDataService.Attendance.Where(x => x.WorkDate.Date == date).ToList();
-            var rows = MockDataService.Employees
+            var records = HrmDataService.Attendance.Where(x => x.WorkDate.Date == date).ToList();
+            var rows = HrmDataService.Employees
                 .Where(x => HrmBusinessService.IsEmployedOn(x, date) && (HrmBusinessService.IsWorkingDay(date) || records.Any(record => record.EmployeeId == x.Id)))
                 .Select(employee =>
                 {
@@ -58,7 +58,7 @@ namespace HRMDesktop.Views.Admin
             WorkingText.Text = rows.Count(x => x.Status == "Đang làm việc").ToString();
             MissingText.Text = rows.Count(x => x.Status == "Vắng mặt" || x.Status == "Chưa chấm công").ToString();
 
-            var adjustments = MockDataService.AttendanceAdjustments
+            var adjustments = HrmDataService.AttendanceAdjustments
                 .Where(x => MatchesFilter(x.EmployeeName, x.EmployeeCode, x.Department, keyword, department))
                 .OrderBy(x => x.Status == "Chờ duyệt" ? 0 : 1)
                 .ThenByDescending(x => x.SubmittedAt)
@@ -81,7 +81,7 @@ namespace HRMDesktop.Views.Admin
         {
             var request = (sender as Button).Tag as AttendanceAdjustmentRequest;
             if (request == null) return;
-            var original = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == request.EmployeeId && x.WorkDate.Date == request.WorkDate.Date);
+            var original = HrmDataService.Attendance.FirstOrDefault(x => x.EmployeeId == request.EmployeeId && x.WorkDate.Date == request.WorkDate.Date);
             AdjustmentDetailEmployeeText.Text = request.EmployeeName + "  •  " + request.DisplayCode + "  •  " + request.Department;
             AdjustmentDetailDateText.Text = request.WorkDateDisplay;
             AdjustmentDetailStatusText.Text = request.Status;
@@ -101,7 +101,7 @@ namespace HRMDesktop.Views.Admin
         private void UpdateAdjustment(AttendanceAdjustmentRequest request, bool approve)
         {
             if (request == null || !request.CanReview) return;
-            var employee = MockDataService.GetEmployee(request.EmployeeId);
+            var employee = HrmDataService.GetEmployee(request.EmployeeId);
             if (employee == null)
             {
                 MessageBox.Show("Không tìm thấy hồ sơ nhân viên của yêu cầu này.", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -117,7 +117,7 @@ namespace HRMDesktop.Views.Admin
                 MessageBox.Show("Ngày điều chỉnh không thuộc ngày làm việc của ca hành chính.", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (approve && MockDataService.LeaveRequests.Any(x => x.EmployeeId == request.EmployeeId && x.Status == "Đã duyệt" && request.WorkDate.Date >= x.FromDate.Date && request.WorkDate.Date <= x.ToDate.Date))
+            if (approve && HrmDataService.LeaveRequests.Any(x => x.EmployeeId == request.EmployeeId && x.Status == "Đã duyệt" && request.WorkDate.Date >= x.FromDate.Date && request.WorkDate.Date <= x.ToDate.Date))
             {
                 MessageBox.Show("Không thể duyệt vì nhân viên đã được duyệt nghỉ phép trong ngày này.", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -135,12 +135,12 @@ namespace HRMDesktop.Views.Admin
                     MessageBox.Show(validationError, "Dữ liệu điều chỉnh không hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-                var record = MockDataService.Attendance.FirstOrDefault(x => x.EmployeeId == request.EmployeeId && x.WorkDate.Date == request.WorkDate.Date);
+                var record = HrmDataService.Attendance.FirstOrDefault(x => x.EmployeeId == request.EmployeeId && x.WorkDate.Date == request.WorkDate.Date);
                 if (record == null)
                 {
-                    int nextId = MockDataService.Attendance.Count == 0 ? 1 : MockDataService.Attendance.Max(x => x.Id) + 1;
+                    int nextId = HrmDataService.Attendance.Count == 0 ? 1 : HrmDataService.Attendance.Max(x => x.Id) + 1;
                     record = HrmBusinessService.CreateAttendanceRecord(nextId, employee, request.WorkDate, checkInAt, checkOutAt);
-                    MockDataService.Attendance.Add(record);
+                    HrmDataService.Attendance.Add(record);
                 }
                 else
                 {
@@ -156,8 +156,8 @@ namespace HRMDesktop.Views.Admin
             }
             request.ReviewedAt = SystemTimeService.Now;
             request.ReviewedBy = "admin";
-            MockDataService.AddAudit("admin", action + " điều chỉnh chấm công", request.EmployeeCode + " - " + request.WorkDateDisplay);
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit("admin", action + " điều chỉnh chấm công", request.EmployeeCode + " - " + request.WorkDateDisplay);
+            HrmDataService.SaveChanges();
             ApplyFilter();
             MessageBox.Show("Yêu cầu đã được cập nhật: " + request.Status + ".", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Information);
         }

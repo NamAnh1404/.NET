@@ -30,6 +30,15 @@ namespace HRMDesktop.Services
             return SlowEquals(credential.PasswordHash, Hash(password ?? string.Empty, credential.PasswordSalt));
         }
 
+        public static void UpdatePassword(UserCredential credential, string newPassword)
+        {
+            if (credential == null) throw new ArgumentNullException("credential");
+            byte[] saltBytes = new byte[16];
+            using (var random = RandomNumberGenerator.Create()) random.GetBytes(saltBytes);
+            credential.PasswordSalt = Convert.ToBase64String(saltBytes);
+            credential.PasswordHash = Hash(newPassword, credential.PasswordSalt);
+        }
+
         private static string Hash(string password, string salt)
         {
             byte[] saltBytes = Convert.FromBase64String(salt);

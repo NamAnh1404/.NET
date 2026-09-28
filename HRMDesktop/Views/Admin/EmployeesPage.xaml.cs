@@ -22,8 +22,8 @@ namespace HRMDesktop.Views.Admin
 
         private void UpdateSummary()
         {
-            TotalText.Text = MockDataService.Employees.Count.ToString();
-            var active = MockDataService.Employees.Where(x => x.Status == "Đang làm việc" && HrmBusinessService.IsEmployedOn(x, SystemTimeService.Today)).ToList();
+            TotalText.Text = HrmDataService.Employees.Count.ToString();
+            var active = HrmDataService.Employees.Where(x => x.Status == "Đang làm việc" && HrmBusinessService.IsEmployedOn(x, SystemTimeService.Today)).ToList();
             ActiveText.Text = active.Count.ToString();
             SalaryText.Text = active.Sum(x => x.BaseSalary).ToString("N0") + " đ";
         }
@@ -35,7 +35,7 @@ namespace HRMDesktop.Views.Admin
             string keyword = SearchBox == null ? string.Empty : SearchBox.Text.Trim().ToLower();
             string department = "Tất cả phòng ban";
             if (DepartmentFilter != null && DepartmentFilter.SelectedItem is ComboBoxItem) department = Convert.ToString(((ComboBoxItem)DepartmentFilter.SelectedItem).Content);
-            EmployeeGrid.ItemsSource = MockDataService.Employees.Where(x =>
+            EmployeeGrid.ItemsSource = HrmDataService.Employees.Where(x =>
                 (_showArchived ? x.Status == "Đã nghỉ việc" : x.Status != "Đã nghỉ việc") &&
                 (string.IsNullOrEmpty(keyword) || (x.FullName ?? string.Empty).ToLower().Contains(keyword) || (x.Code ?? string.Empty).ToLower().Contains(keyword) || (x.Email ?? string.Empty).ToLower().Contains(keyword)) &&
                 (department == "Tất cả phòng ban" || x.Department == department)).ToList();
@@ -60,7 +60,7 @@ namespace HRMDesktop.Views.Admin
         private void AddEmployee_Click(object sender, RoutedEventArgs e)
         {
             _editingEmployee = null;
-            int id = MockDataService.Employees.Count == 0 ? 1 : MockDataService.Employees.Max(x => x.Id) + 1;
+            int id = HrmDataService.Employees.Count == 0 ? 1 : HrmDataService.Employees.Max(x => x.Id) + 1;
             EmployeeNameBox.Clear();
             EmployeeCodeBox.Text = "NV" + id.ToString("000");
             EmployeeEmailBox.Clear();
@@ -130,12 +130,12 @@ namespace HRMDesktop.Views.Admin
                 ShowFormError("Email chưa đúng định dạng.");
                 return;
             }
-            if (MockDataService.Employees.Any(x => x != _editingEmployee && string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase)))
+            if (HrmDataService.Employees.Any(x => x != _editingEmployee && string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase)))
             {
                 ShowFormError("Mã nhân viên đã tồn tại.");
                 return;
             }
-            if (MockDataService.Employees.Any(x => x != _editingEmployee && string.Equals(x.Email, email, StringComparison.OrdinalIgnoreCase)))
+            if (HrmDataService.Employees.Any(x => x != _editingEmployee && string.Equals(x.Email, email, StringComparison.OrdinalIgnoreCase)))
             {
                 ShowFormError("Email đã được sử dụng bởi nhân viên khác.");
                 return;
@@ -173,7 +173,7 @@ namespace HRMDesktop.Views.Admin
 
             if (_editingEmployee == null)
             {
-                int id = MockDataService.Employees.Count == 0 ? 1 : MockDataService.Employees.Max(x => x.Id) + 1;
+                int id = HrmDataService.Employees.Count == 0 ? 1 : HrmDataService.Employees.Max(x => x.Id) + 1;
                 var employee = new HRMDesktop.Models.Employee
                 {
                     Id = id, Code = code, FullName = fullName, Email = email,
@@ -185,14 +185,14 @@ namespace HRMDesktop.Views.Admin
                     BaseSalary = salary, Status = status,
                     TerminationDate = status == "Đã nghỉ việc" ? (DateTime?)SystemTimeService.Today : (DateTime?)null
                 };
-                MockDataService.Employees.Add(employee);
-                int employmentPeriodId = MockDataService.EmploymentPeriods.Count == 0 ? 1 : MockDataService.EmploymentPeriods.Max(x => x.Id) + 1;
-                MockDataService.EmploymentPeriods.Add(new EmploymentPeriod { Id = employmentPeriodId, EmployeeId = id, StartDate = employee.HireDate, EndDate = employee.TerminationDate });
-                int salaryHistoryId = MockDataService.SalaryHistories.Count == 0 ? 1 : MockDataService.SalaryHistories.Max(x => x.Id) + 1;
-                MockDataService.SalaryHistories.Add(new SalaryHistory { Id = salaryHistoryId, EmployeeId = id, EffectiveFrom = employee.HireDate, BaseSalary = salary });
-                MockDataService.Credentials.Add(PasswordSecurity.CreateCredential(id, code.ToLowerInvariant(), "123", "Employee"));
-                MockDataService.Credentials.Last().IsLocked = status != "Đang làm việc";
-                MockDataService.AddAudit("admin", "Thêm nhân viên", code + " - " + fullName);
+                HrmDataService.Employees.Add(employee);
+                int employmentPeriodId = HrmDataService.EmploymentPeriods.Count == 0 ? 1 : HrmDataService.EmploymentPeriods.Max(x => x.Id) + 1;
+                HrmDataService.EmploymentPeriods.Add(new EmploymentPeriod { Id = employmentPeriodId, EmployeeId = id, StartDate = employee.HireDate, EndDate = employee.TerminationDate });
+                int salaryHistoryId = HrmDataService.SalaryHistories.Count == 0 ? 1 : HrmDataService.SalaryHistories.Max(x => x.Id) + 1;
+                HrmDataService.SalaryHistories.Add(new SalaryHistory { Id = salaryHistoryId, EmployeeId = id, EffectiveFrom = employee.HireDate, BaseSalary = salary });
+                HrmDataService.Credentials.Add(PasswordSecurity.CreateCredential(id, code.ToLowerInvariant(), "123", "Employee"));
+                HrmDataService.Credentials.Last().IsLocked = status != "Đang làm việc";
+                HrmDataService.AddAudit("admin", "Thêm nhân viên", code + " - " + fullName);
             }
             else
             {
@@ -211,21 +211,21 @@ namespace HRMDesktop.Views.Admin
                 _editingEmployee.TerminationDate = status == "Đã nghỉ việc" ? (DateTime?)(_editingEmployee.TerminationDate ?? SystemTimeService.Today) : (DateTime?)null;
                 if (status == "Đã nghỉ việc")
                 {
-                    var openEmploymentPeriod = MockDataService.EmploymentPeriods.Where(x => x.EmployeeId == _editingEmployee.Id && !x.EndDate.HasValue).OrderByDescending(x => x.StartDate).FirstOrDefault();
+                    var openEmploymentPeriod = HrmDataService.EmploymentPeriods.Where(x => x.EmployeeId == _editingEmployee.Id && !x.EndDate.HasValue).OrderByDescending(x => x.StartDate).FirstOrDefault();
                     if (openEmploymentPeriod != null) openEmploymentPeriod.EndDate = SystemTimeService.Today;
                 }
-                var credential = MockDataService.Credentials.FirstOrDefault(x => x.EmployeeId == _editingEmployee.Id);
+                var credential = HrmDataService.Credentials.FirstOrDefault(x => x.EmployeeId == _editingEmployee.Id);
                 if (credential != null) credential.IsLocked = status != "Đang làm việc";
                 if (oldSalary != salary)
                 {
-                    int historyId = MockDataService.SalaryHistories.Count == 0 ? 1 : MockDataService.SalaryHistories.Max(x => x.Id) + 1;
-                    MockDataService.SalaryHistories.Add(new SalaryHistory { Id = historyId, EmployeeId = _editingEmployee.Id, EffectiveFrom = new DateTime(SystemTimeService.Today.Year, SystemTimeService.Today.Month, 1), BaseSalary = salary });
+                    int historyId = HrmDataService.SalaryHistories.Count == 0 ? 1 : HrmDataService.SalaryHistories.Max(x => x.Id) + 1;
+                    HrmDataService.SalaryHistories.Add(new SalaryHistory { Id = historyId, EmployeeId = _editingEmployee.Id, EffectiveFrom = new DateTime(SystemTimeService.Today.Year, SystemTimeService.Today.Month, 1), BaseSalary = salary });
                 }
-                MockDataService.AddAudit("admin", "Cập nhật nhân viên", code + " - " + fullName);
+                HrmDataService.AddAudit("admin", "Cập nhật nhân viên", code + " - " + fullName);
                 EmployeeGrid.Items.Refresh();
             }
 
-            MockDataService.SaveChanges();
+            HrmDataService.SaveChanges();
             EmployeeFormOverlay.Visibility = Visibility.Collapsed;
             UpdateSummary();
             ApplyFilter();
@@ -242,12 +242,12 @@ namespace HRMDesktop.Views.Admin
 
             employee.Status = "Đã nghỉ việc";
             employee.TerminationDate = SystemTimeService.Today;
-            var openPeriod = MockDataService.EmploymentPeriods.Where(x => x.EmployeeId == employee.Id && !x.EndDate.HasValue).OrderByDescending(x => x.StartDate).FirstOrDefault();
+            var openPeriod = HrmDataService.EmploymentPeriods.Where(x => x.EmployeeId == employee.Id && !x.EndDate.HasValue).OrderByDescending(x => x.StartDate).FirstOrDefault();
             if (openPeriod != null) openPeriod.EndDate = SystemTimeService.Today;
-            var account = MockDataService.Credentials.FirstOrDefault(x => x.EmployeeId == employee.Id);
+            var account = HrmDataService.Credentials.FirstOrDefault(x => x.EmployeeId == employee.Id);
             if (account != null) account.IsLocked = true;
-            MockDataService.AddAudit("admin", "Cho nghỉ việc", employee.Code + " - " + employee.FullName);
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit("admin", "Cho nghỉ việc", employee.Code + " - " + employee.FullName);
+            HrmDataService.SaveChanges();
             UpdateSummary();
             ApplyFilter();
             MessageBox.Show("Đã khóa tài khoản và chuyển nhân viên sang trạng thái đã nghỉ việc. Dữ liệu lịch sử được bảo toàn.", "Quản lý nhân viên", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -260,12 +260,12 @@ namespace HRMDesktop.Views.Admin
             if (MessageBox.Show("Khôi phục " + employee.FullName + " làm việc từ hôm nay? Tài khoản đăng nhập sẽ được mở lại và một giai đoạn công tác mới được tạo.", "Khôi phục nhân viên", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             employee.Status = "Đang làm việc";
             employee.TerminationDate = null;
-            int nextId = MockDataService.EmploymentPeriods.Count == 0 ? 1 : MockDataService.EmploymentPeriods.Max(x => x.Id) + 1;
-            MockDataService.EmploymentPeriods.Add(new EmploymentPeriod { Id = nextId, EmployeeId = employee.Id, StartDate = SystemTimeService.Today });
-            var account = MockDataService.Credentials.FirstOrDefault(x => x.EmployeeId == employee.Id);
+            int nextId = HrmDataService.EmploymentPeriods.Count == 0 ? 1 : HrmDataService.EmploymentPeriods.Max(x => x.Id) + 1;
+            HrmDataService.EmploymentPeriods.Add(new EmploymentPeriod { Id = nextId, EmployeeId = employee.Id, StartDate = SystemTimeService.Today });
+            var account = HrmDataService.Credentials.FirstOrDefault(x => x.EmployeeId == employee.Id);
             if (account != null) account.IsLocked = false;
-            MockDataService.AddAudit("admin", "Khôi phục nhân viên", employee.Code + " - " + employee.FullName);
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit("admin", "Khôi phục nhân viên", employee.Code + " - " + employee.FullName);
+            HrmDataService.SaveChanges();
             UpdateSummary();
             ApplyFilter();
             MessageBox.Show("Đã khôi phục nhân viên và mở lại tài khoản đăng nhập.", "Quản lý nhân viên", MessageBoxButton.OK, MessageBoxImage.Information);

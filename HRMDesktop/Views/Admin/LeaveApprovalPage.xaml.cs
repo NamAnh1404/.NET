@@ -16,7 +16,7 @@ namespace HRMDesktop.Views.Admin
             string keyword = SearchBox == null ? "" : SearchBox.Text.Trim().ToLower();
             string status = "Tất cả trạng thái";
             if (StatusFilter != null && StatusFilter.SelectedItem is ComboBoxItem) status = Convert.ToString(((ComboBoxItem)StatusFilter.SelectedItem).Content);
-            LeaveGrid.ItemsSource = MockDataService.LeaveRequests.Where(x =>
+            LeaveGrid.ItemsSource = HrmDataService.LeaveRequests.Where(x =>
                 (string.IsNullOrEmpty(keyword) || (x.EmployeeName ?? string.Empty).ToLower().Contains(keyword) || (x.EmployeeCode ?? string.Empty).ToLower().Contains(keyword) || (x.Reason ?? string.Empty).ToLower().Contains(keyword) || (x.LeaveType ?? string.Empty).ToLower().Contains(keyword)) &&
                 (status == "Tất cả trạng thái" || x.Status == status))
                 .OrderBy(x => x.Status == "Chờ duyệt" ? 0 : 1)
@@ -43,18 +43,18 @@ namespace HRMDesktop.Views.Admin
         private void UpdateStatus(LeaveRequest request, string status)
         {
             if (request == null || !request.CanReview) return;
-            var employee = MockDataService.GetEmployee(request.EmployeeId);
+            var employee = HrmDataService.GetEmployee(request.EmployeeId);
             if (employee == null || employee.Status != "Đang làm việc")
             {
                 MessageBox.Show("Không thể xử lý vì nhân viên không còn ở trạng thái đang làm việc.", "Duyệt nghỉ phép", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (status == "Đã duyệt" && MockDataService.LeaveRequests.Any(x => x.Id != request.Id && x.EmployeeId == request.EmployeeId && x.Status == "Đã duyệt" && request.FromDate.Date <= x.ToDate.Date && request.ToDate.Date >= x.FromDate.Date))
+            if (status == "Đã duyệt" && HrmDataService.LeaveRequests.Any(x => x.Id != request.Id && x.EmployeeId == request.EmployeeId && x.Status == "Đã duyệt" && request.FromDate.Date <= x.ToDate.Date && request.ToDate.Date >= x.FromDate.Date))
             {
                 MessageBox.Show("Nhân viên đã có một đơn được duyệt trùng khoảng thời gian này.", "Đơn nghỉ phép bị trùng", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (status == "Đã duyệt" && MockDataService.Attendance.Any(x => x.EmployeeId == request.EmployeeId && x.CheckInAt.HasValue && x.WorkDate.Date >= request.FromDate.Date && x.WorkDate.Date <= request.ToDate.Date))
+            if (status == "Đã duyệt" && HrmDataService.Attendance.Any(x => x.EmployeeId == request.EmployeeId && x.CheckInAt.HasValue && x.WorkDate.Date >= request.FromDate.Date && x.WorkDate.Date <= request.ToDate.Date))
             {
                 MessageBox.Show("Không thể duyệt vì khoảng nghỉ đã có ngày phát sinh chấm công.", "Dữ liệu bị xung đột", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -75,8 +75,8 @@ namespace HRMDesktop.Views.Admin
             request.Status = status;
             request.ReviewedAt = SystemTimeService.Now;
             request.ReviewedBy = "admin";
-            MockDataService.AddAudit("admin", action + " đơn nghỉ phép", request.EmployeeCode + " - " + request.DateRange);
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit("admin", action + " đơn nghỉ phép", request.EmployeeCode + " - " + request.DateRange);
+            HrmDataService.SaveChanges();
             ApplyFilter();
             MessageBox.Show("Đơn của " + request.EmployeeName + " đã được cập nhật: " + status + ".", "Duyệt nghỉ phép", MessageBoxButton.OK, MessageBoxImage.Information);
         }

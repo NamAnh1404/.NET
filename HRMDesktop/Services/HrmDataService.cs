@@ -5,7 +5,7 @@ using HRMDesktop.Models;
 
 namespace HRMDesktop.Services
 {
-    public static class MockDataService
+    public static class HrmDataService
     {
         public static ObservableCollection<Employee> Employees { get; private set; }
         public static ObservableCollection<AttendanceRecord> Attendance { get; private set; }
@@ -19,7 +19,7 @@ namespace HRMDesktop.Services
         public static ObservableCollection<UserCredential> Credentials { get; private set; }
         public static ObservableCollection<AuditLog> AuditLogs { get; private set; }
 
-        static MockDataService()
+        static HrmDataService()
         {
             Employees = new ObservableCollection<Employee>
             {
@@ -95,9 +95,26 @@ namespace HRMDesktop.Services
             };
             AuditLogs = new ObservableCollection<AuditLog>();
 
-            var saved = DataPersistenceService.Load();
-            if (saved != null) ApplySnapshot(saved);
-            EnsureDefaults();
+            var saved = DatabaseDataService.Load();
+            if (saved != null)
+            {
+                ApplySnapshot(saved);
+                EnsureDefaults();
+                if (!DatabaseDataService.Save(CreateSnapshot()))
+                    throw new InvalidOperationException("Không thể đồng bộ dữ liệu SQL Server: " + DatabaseDataService.LastError);
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(DatabaseDataService.LastError))
+                    throw new InvalidOperationException("Không thể kết nối HRMDatabase: " + DatabaseDataService.LastError);
+
+                // Chỉ dùng XML cũ cho lần chuyển đổi đầu tiên, sau đó SQL Server là nguồn dữ liệu chính.
+                var legacySnapshot = DataPersistenceService.Load();
+                if (legacySnapshot != null) ApplySnapshot(legacySnapshot);
+                EnsureDefaults();
+                if (!DatabaseDataService.Save(CreateSnapshot()))
+                    throw new InvalidOperationException("Không thể khởi tạo dữ liệu SQL Server: " + DatabaseDataService.LastError);
+            }
 
         }
 
@@ -111,7 +128,12 @@ namespace HRMDesktop.Services
 
         public static bool SaveChanges()
         {
-            return DataPersistenceService.Save(new HrmDataSnapshot
+            return DatabaseDataService.Save(CreateSnapshot());
+        }
+
+        private static HrmDataSnapshot CreateSnapshot()
+        {
+            return new HrmDataSnapshot
             {
                 Employees = Employees.ToList(),
                 Attendance = Attendance.ToList(),
@@ -124,7 +146,7 @@ namespace HRMDesktop.Services
                 Holidays = Holidays.ToList(),
                 Credentials = Credentials.ToList(),
                 AuditLogs = AuditLogs.ToList()
-            });
+            };
         }
 
         private static void ApplySnapshot(HrmDataSnapshot snapshot)

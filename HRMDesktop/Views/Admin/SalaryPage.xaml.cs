@@ -41,7 +41,7 @@ namespace HRMDesktop.Views.Admin
             var selected = MonthFilter.SelectedItem as ComboBoxItem;
             string month = selected == null ? SystemTimeService.Today.ToString("MM/yyyy") : Convert.ToString(selected.Tag);
             SalaryPeriodTitle.Text = "Bảng lương tháng " + month;
-            SalaryGrid.ItemsSource = MockDataService.Salaries.Where(x => x.Month == month).OrderBy(x => x.EmployeeName).ToList();
+            SalaryGrid.ItemsSource = HrmDataService.Salaries.Where(x => x.Month == month).OrderBy(x => x.EmployeeName).ToList();
             SalaryGrid.SelectedItem = null;
             RefreshSummary();
         }
@@ -56,8 +56,8 @@ namespace HRMDesktop.Views.Admin
             selected.PaidBy = "admin";
             selected.PaymentMethod = "Chuyển khoản";
             selected.TransactionReference = "PAY-" + selected.PeriodStart.ToString("yyyyMM") + "-" + selected.EmployeeCode;
-            MockDataService.AddAudit("admin", "Thanh toán lương", selected.TransactionReference + " - " + selected.EmployeeName);
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit("admin", "Thanh toán lương", selected.TransactionReference + " - " + selected.EmployeeName);
+            HrmDataService.SaveChanges();
             RefreshSummary();
             MessageBox.Show("Đã cập nhật trạng thái thanh toán cho " + selected.EmployeeName + ".", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -75,20 +75,20 @@ namespace HRMDesktop.Views.Admin
         {
             string month = SelectedMonth;
             DateTime period = DateTime.ParseExact("01/" + month, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
-            var employees = MockDataService.Employees.Where(x => HrmBusinessService.IsEmployedDuringMonth(x, period) && !MockDataService.Salaries.Any(s => s.EmployeeId == x.Id && s.PeriodStart.Year == period.Year && s.PeriodStart.Month == period.Month)).ToList();
+            var employees = HrmDataService.Employees.Where(x => HrmBusinessService.IsEmployedDuringMonth(x, period) && !HrmDataService.Salaries.Any(s => s.EmployeeId == x.Id && s.PeriodStart.Year == period.Year && s.PeriodStart.Month == period.Month)).ToList();
             if (employees.Count == 0)
             {
                 MessageBox.Show("Tất cả nhân viên đang làm việc đã có phiếu lương trong tháng " + month + ".", "Tạo bảng lương", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             if (MessageBox.Show("Tạo " + employees.Count + " phiếu lương còn thiếu cho tháng " + month + "?", "Xác nhận tạo bảng lương", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-            int nextId = MockDataService.Salaries.Count == 0 ? 1 : MockDataService.Salaries.Max(x => x.Id) + 1;
+            int nextId = HrmDataService.Salaries.Count == 0 ? 1 : HrmDataService.Salaries.Max(x => x.Id) + 1;
             foreach (var employee in employees)
             {
-                MockDataService.Salaries.Add(new SalaryRecord { Id = nextId++, EmployeeId = employee.Id, EmployeeName = employee.FullName, EmployeeCode = employee.Code, PeriodStart = period, BaseSalary = HrmBusinessService.GetBaseSalary(employee.Id, period), Bonus = 0, Deduction = 0, Status = "Chờ thanh toán" });
+                HrmDataService.Salaries.Add(new SalaryRecord { Id = nextId++, EmployeeId = employee.Id, EmployeeName = employee.FullName, EmployeeCode = employee.Code, PeriodStart = period, BaseSalary = HrmBusinessService.GetBaseSalary(employee.Id, period), Bonus = 0, Deduction = 0, Status = "Chờ thanh toán" });
             }
-            MockDataService.AddAudit("admin", "Tạo bảng lương", month + " - " + employees.Count + " phiếu");
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit("admin", "Tạo bảng lương", month + " - " + employees.Count + " phiếu");
+            HrmDataService.SaveChanges();
             ApplyMonthFilter();
             MessageBox.Show("Đã tạo " + employees.Count + " phiếu lương. Hãy cập nhật thưởng và khấu trừ trước khi thanh toán.", "Tạo bảng lương thành công", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -134,8 +134,8 @@ namespace HRMDesktop.Views.Admin
             }
             _editingSalary.Bonus = bonus;
             _editingSalary.Deduction = deduction;
-            MockDataService.AddAudit("admin", "Cập nhật phiếu lương", _editingSalary.EmployeeCode + " - " + _editingSalary.Month);
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit("admin", "Cập nhật phiếu lương", _editingSalary.EmployeeCode + " - " + _editingSalary.Month);
+            HrmDataService.SaveChanges();
             SalaryFormOverlay.Visibility = Visibility.Collapsed;
             _editingSalary = null;
             RefreshSummary();

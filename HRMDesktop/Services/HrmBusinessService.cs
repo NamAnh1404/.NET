@@ -9,14 +9,14 @@ namespace HRMDesktop.Services
     {
         public static WorkShift DefaultShift
         {
-            get { return MockDataService.WorkShifts.First(); }
+            get { return HrmDataService.WorkShifts.First(); }
         }
 
         public static bool IsWorkingDay(DateTime date)
         {
             date = date.Date;
             return date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday &&
-                   !MockDataService.Holidays.Any(x => x.Date.Date == date);
+                   !HrmDataService.Holidays.Any(x => x.Date.Date == date);
         }
 
         public static int CountWorkingDays(DateTime fromDate, DateTime toDate)
@@ -30,7 +30,7 @@ namespace HRMDesktop.Services
         public static bool IsEmployedOn(Employee employee, DateTime date)
         {
             if (employee == null) return false;
-            var periods = MockDataService.EmploymentPeriods.Where(x => x.EmployeeId == employee.Id).ToList();
+            var periods = HrmDataService.EmploymentPeriods.Where(x => x.EmployeeId == employee.Id).ToList();
             if (periods.Count > 0) return periods.Any(x => x.StartDate.Date <= date.Date && (!x.EndDate.HasValue || x.EndDate.Value.Date >= date.Date));
             DateTime hireDate = employee.HireDate == default(DateTime) ? DateTime.MinValue : employee.HireDate.Date;
             return hireDate <= date.Date && (!employee.TerminationDate.HasValue || employee.TerminationDate.Value.Date >= date.Date);
@@ -41,24 +41,24 @@ namespace HRMDesktop.Services
             DateTime start = new DateTime(month.Year, month.Month, 1);
             DateTime end = start.AddMonths(1).AddDays(-1);
             if (employee == null) return false;
-            var periods = MockDataService.EmploymentPeriods.Where(x => x.EmployeeId == employee.Id).ToList();
+            var periods = HrmDataService.EmploymentPeriods.Where(x => x.EmployeeId == employee.Id).ToList();
             if (periods.Count > 0) return periods.Any(x => x.StartDate.Date <= end && (!x.EndDate.HasValue || x.EndDate.Value.Date >= start));
             return employee.HireDate.Date <= end && (!employee.TerminationDate.HasValue || employee.TerminationDate.Value.Date >= start);
         }
 
         public static decimal GetBaseSalary(int employeeId, DateTime period)
         {
-            var history = MockDataService.SalaryHistories
+            var history = HrmDataService.SalaryHistories
                 .Where(x => x.EmployeeId == employeeId && x.EffectiveFrom.Date <= period.Date)
                 .OrderByDescending(x => x.EffectiveFrom)
                 .FirstOrDefault();
-            var employee = MockDataService.GetEmployee(employeeId);
+            var employee = HrmDataService.GetEmployee(employeeId);
             return history == null ? (employee == null ? 0 : employee.BaseSalary) : history.BaseSalary;
         }
 
         public static int GetAnnualLeaveUsed(int employeeId, int year, int excludingRequestId = 0)
         {
-            return MockDataService.LeaveRequests
+            return HrmDataService.LeaveRequests
                 .Where(x => x.EmployeeId == employeeId && x.Id != excludingRequestId && x.Status == "Đã duyệt" && x.LeaveType == "Nghỉ phép năm" && x.FromDate.Year == year)
                 .Sum(x => CountWorkingDays(x.FromDate, x.ToDate));
         }
@@ -71,7 +71,7 @@ namespace HRMDesktop.Services
 
         public static bool HasApprovedLeave(int employeeId, DateTime date)
         {
-            return MockDataService.LeaveRequests.Any(x => x.EmployeeId == employeeId && x.Status == "Đã duyệt" && date.Date >= x.FromDate.Date && date.Date <= x.ToDate.Date);
+            return HrmDataService.LeaveRequests.Any(x => x.EmployeeId == employeeId && x.Status == "Đã duyệt" && date.Date >= x.FromDate.Date && date.Date <= x.ToDate.Date);
         }
 
         public static bool TryParseTime(string value, out TimeSpan time)

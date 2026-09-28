@@ -19,15 +19,15 @@ namespace HRMDesktop.Views.Employee
         }
         private void RefreshData()
         {
-            LeaveGrid.ItemsSource = MockDataService.LeaveRequests.Where(x => x.EmployeeId == _account.EmployeeId).OrderByDescending(x => x.Id).ToList();
-            var employee = MockDataService.GetEmployee(_account.EmployeeId);
+            LeaveGrid.ItemsSource = HrmDataService.LeaveRequests.Where(x => x.EmployeeId == _account.EmployeeId).OrderByDescending(x => x.Id).ToList();
+            var employee = HrmDataService.GetEmployee(_account.EmployeeId);
             LeaveBalanceText.Text = HrmBusinessService.GetAnnualLeaveRemaining(employee, SystemTimeService.Today.Year) + " ngày";
         }
         private void Submit_Click(object sender, RoutedEventArgs e)
         {
             if (!FromDatePicker.SelectedDate.HasValue || !ToDatePicker.SelectedDate.HasValue || string.IsNullOrWhiteSpace(ReasonBox.Text))
             { MessageBox.Show("Hãy nhập đầy đủ thời gian và lý do nghỉ phép.", "Dữ liệu chưa hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            var currentEmployee = MockDataService.GetEmployee(_account.EmployeeId);
+            var currentEmployee = HrmDataService.GetEmployee(_account.EmployeeId);
             if (currentEmployee == null || currentEmployee.Status != "Đang làm việc")
             { MessageBox.Show("Tài khoản hiện không thuộc nhân viên đang làm việc.", "Không thể gửi đơn", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             DateTime fromDate = FromDatePicker.SelectedDate.Value.Date;
@@ -39,7 +39,7 @@ namespace HRMDesktop.Views.Employee
             { MessageBox.Show("Khoảng nghỉ không có ngày làm việc hợp lệ hoặc trùng ngày lễ.", "Thời gian chưa hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             if (ReasonBox.Text.Trim().Length < 5)
             { MessageBox.Show("Lý do nghỉ phép cần có ít nhất 5 ký tự.", "Dữ liệu chưa hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            bool overlaps = MockDataService.LeaveRequests.Any(x => x.EmployeeId == _account.EmployeeId &&
+            bool overlaps = HrmDataService.LeaveRequests.Any(x => x.EmployeeId == _account.EmployeeId &&
                 (x.Status == "Chờ duyệt" || x.Status == "Đã duyệt") && fromDate <= x.ToDate.Date && toDate >= x.FromDate.Date);
             if (overlaps)
             { MessageBox.Show("Khoảng thời gian này đang trùng với một đơn chờ duyệt hoặc đã duyệt.", "Đơn nghỉ phép bị trùng", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
@@ -49,14 +49,14 @@ namespace HRMDesktop.Views.Employee
             { MessageBox.Show("Đơn nghỉ phép năm không được kéo dài qua hai năm. Hãy tách thành hai đơn để tính đúng số dư từng năm.", "Thời gian chưa hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             if (leaveType == "Nghỉ phép năm" && requestedDays > HrmBusinessService.GetAnnualLeaveRemaining(currentEmployee, fromDate.Year))
             { MessageBox.Show("Số ngày yêu cầu vượt quá số phép năm còn lại.", "Không đủ phép năm", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            bool alreadyWorked = MockDataService.Attendance.Any(x => x.EmployeeId == _account.EmployeeId && x.CheckInAt.HasValue && x.WorkDate.Date >= fromDate && x.WorkDate.Date <= toDate);
+            bool alreadyWorked = HrmDataService.Attendance.Any(x => x.EmployeeId == _account.EmployeeId && x.CheckInAt.HasValue && x.WorkDate.Date >= fromDate && x.WorkDate.Date <= toDate);
             if (alreadyWorked)
             { MessageBox.Show("Khoảng nghỉ có ngày đã phát sinh chấm công. Hãy chọn thời gian khác hoặc liên hệ Admin.", "Dữ liệu bị xung đột", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            int nextId = MockDataService.LeaveRequests.Count == 0 ? 1 : MockDataService.LeaveRequests.Max(x => x.Id) + 1;
-            var employee = MockDataService.GetEmployee(_account.EmployeeId);
-            MockDataService.LeaveRequests.Add(new LeaveRequest { Id=nextId, EmployeeId=_account.EmployeeId, EmployeeName=_account.FullName, EmployeeCode=employee == null ? string.Empty : employee.Code, LeaveType=leaveType, FromDate=fromDate, ToDate=toDate, SubmittedAt=SystemTimeService.Now, Reason=ReasonBox.Text.Trim(), Status="Chờ duyệt" });
-            MockDataService.AddAudit(_account.Username, "Gửi đơn nghỉ phép", fromDate.ToString("dd/MM/yyyy") + " - " + toDate.ToString("dd/MM/yyyy"));
-            MockDataService.SaveChanges();
+            int nextId = HrmDataService.LeaveRequests.Count == 0 ? 1 : HrmDataService.LeaveRequests.Max(x => x.Id) + 1;
+            var employee = HrmDataService.GetEmployee(_account.EmployeeId);
+            HrmDataService.LeaveRequests.Add(new LeaveRequest { Id=nextId, EmployeeId=_account.EmployeeId, EmployeeName=_account.FullName, EmployeeCode=employee == null ? string.Empty : employee.Code, LeaveType=leaveType, FromDate=fromDate, ToDate=toDate, SubmittedAt=SystemTimeService.Now, Reason=ReasonBox.Text.Trim(), Status="Chờ duyệt" });
+            HrmDataService.AddAudit(_account.Username, "Gửi đơn nghỉ phép", fromDate.ToString("dd/MM/yyyy") + " - " + toDate.ToString("dd/MM/yyyy"));
+            HrmDataService.SaveChanges();
             ReasonBox.Clear(); FromDatePicker.SelectedDate = NextWorkingDay(SystemTimeService.Today); ToDatePicker.SelectedDate = NextWorkingDay(SystemTimeService.Today); RefreshData();
             MessageBox.Show("Đơn nghỉ phép đã được gửi và đang chờ Admin duyệt.", "Gửi đơn thành công", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -69,8 +69,8 @@ namespace HRMDesktop.Views.Employee
             if (MessageBox.Show("Bạn muốn hủy đơn nghỉ từ " + request.DateRange + "?", "Xác nhận hủy đơn", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             request.Status = "Đã hủy";
             request.CancelledAt = SystemTimeService.Now;
-            MockDataService.AddAudit(_account.Username, "Hủy đơn nghỉ phép", request.DateRange);
-            MockDataService.SaveChanges();
+            HrmDataService.AddAudit(_account.Username, "Hủy đơn nghỉ phép", request.DateRange);
+            HrmDataService.SaveChanges();
             RefreshData();
         }
 
