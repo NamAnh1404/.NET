@@ -11,7 +11,7 @@ namespace HRMDesktop.Views.Employee
     public partial class MyProfilePage : Page
     {
         private readonly UserAccount _account;
-        private readonly HRMDesktop.Models.Employee _employee;
+        private HRMDesktop.Models.Employee _employee;
         private readonly Action<UserAccount> _accountUpdated;
         public MyProfilePage(UserAccount account, Action<UserAccount> accountUpdated)
         {
@@ -32,7 +32,13 @@ namespace HRMDesktop.Views.Employee
             _account.FullName = _employee.FullName; _account.Email = _employee.Email; ProfileNameText.Text = _employee.FullName;
             InitialText.Text = _account.Initial;
             HrmDataService.AddAudit(_account.Username, "Cập nhật thông tin liên hệ", _employee.Code);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges())
+            {
+                _employee = HrmDataService.GetEmployee(_account.EmployeeId);
+                if (_employee != null) { _account.Email = _employee.Email; EmailBox.Text = _employee.Email; PhoneBox.Text = _employee.Phone; }
+                MessageBox.Show("Không thể lưu thay đổi vào SQL Server. Dữ liệu đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
             if (_accountUpdated != null) _accountUpdated(_account);
             MessageBox.Show("Đã cập nhật thông tin liên hệ.", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
         }

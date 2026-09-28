@@ -243,7 +243,7 @@ namespace HRMDesktop.Views.Admin
                 EmployeeGrid.Items.Refresh();
             }
 
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); EmployeeFormOverlay.Visibility = Visibility.Collapsed; _editingEmployee = null; UpdateSummary(); ApplyFilter(); return; }
             EmployeeFormOverlay.Visibility = Visibility.Collapsed;
             UpdateSummary();
             ApplyFilter();
@@ -265,7 +265,7 @@ namespace HRMDesktop.Views.Admin
             var account = HrmDataService.Credentials.FirstOrDefault(x => x.EmployeeId == employee.Id);
             if (account != null) account.IsLocked = true;
             HrmDataService.AddAudit("admin", "Cho nghỉ việc", employee.Code + " - " + employee.FullName);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); UpdateSummary(); ApplyFilter(); return; }
             UpdateSummary();
             ApplyFilter();
             MessageBox.Show("Đã khóa tài khoản và chuyển nhân viên sang trạng thái đã nghỉ việc. Dữ liệu lịch sử được bảo toàn.", "Quản lý nhân viên", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -283,7 +283,7 @@ namespace HRMDesktop.Views.Admin
             var account = HrmDataService.Credentials.FirstOrDefault(x => x.EmployeeId == employee.Id);
             if (account != null) account.IsLocked = false;
             HrmDataService.AddAudit("admin", "Khôi phục nhân viên", employee.Code + " - " + employee.FullName);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); UpdateSummary(); ApplyFilter(); return; }
             UpdateSummary();
             ApplyFilter();
             MessageBox.Show("Đã khôi phục nhân viên và mở lại tài khoản đăng nhập.", "Quản lý nhân viên", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -293,6 +293,11 @@ namespace HRMDesktop.Views.Admin
         {
             EmployeeFormError.Text = message;
             EmployeeFormError.Visibility = Visibility.Visible;
+        }
+
+        private static void ShowSaveError()
+        {
+            MessageBox.Show("Không thể lưu thay đổi vào SQL Server. Dữ liệu đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         private static string GetSelectedContent(ComboBox comboBox)

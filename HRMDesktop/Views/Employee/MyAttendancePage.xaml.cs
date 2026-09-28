@@ -104,7 +104,7 @@ namespace HRMDesktop.Views.Employee
                 _today.Status = "Đang làm việc";
             }
             HrmDataService.AddAudit(_account.Username, "Chấm công vào", now.ToString("dd/MM/yyyy HH:mm:ss"));
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); RefreshData(); return; }
             RefreshData();
         }
 
@@ -117,7 +117,7 @@ namespace HRMDesktop.Views.Employee
             _today.CheckOutAt = now;
             _today.Status = "Đã kết thúc";
             HrmDataService.AddAudit(_account.Username, "Chấm công ra", now.ToString("dd/MM/yyyy HH:mm:ss"));
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); RefreshData(); return; }
             RefreshData();
         }
 
@@ -179,7 +179,7 @@ namespace HRMDesktop.Views.Employee
                 Status = "Chờ duyệt"
             });
             HrmDataService.AddAudit(_account.Username, "Gửi điều chỉnh chấm công", workDate.ToString("dd/MM/yyyy"));
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); RefreshData(); return; }
             AdjustmentOverlay.Visibility = Visibility.Collapsed;
             RefreshData();
             MessageBox.Show("Yêu cầu đã được gửi đến Admin để kiểm tra.", "Gửi yêu cầu thành công", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -200,6 +200,11 @@ namespace HRMDesktop.Views.Employee
         {
             AdjustmentErrorText.Text = message;
             AdjustmentErrorText.Visibility = Visibility.Visible;
+        }
+
+        private static void ShowSaveError()
+        {
+            MessageBox.Show("Không thể lưu thay đổi vào SQL Server. Dữ liệu đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
     }

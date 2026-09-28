@@ -10,6 +10,7 @@ namespace HRMDesktop.Views.Admin
     public partial class SalaryPage : Page
     {
         private SalaryRecord _editingSalary;
+        private PayrollCalculation _currentSuggestion;
 
         public SalaryPage()
         {
@@ -57,7 +58,7 @@ namespace HRMDesktop.Views.Admin
             selected.PaymentMethod = "Chuyển khoản";
             selected.TransactionReference = "PAY-" + selected.PeriodStart.ToString("yyyyMM") + "-" + selected.EmployeeCode;
             HrmDataService.AddAudit("admin", "Thanh toán lương", selected.TransactionReference + " - " + selected.EmployeeName);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); ApplyMonthFilter(); return; }
             RefreshSummary();
             MessageBox.Show("Đã cập nhật trạng thái thanh toán cho " + selected.EmployeeName + ".", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -85,10 +86,12 @@ namespace HRMDesktop.Views.Admin
             int nextId = HrmDataService.Salaries.Count == 0 ? 1 : HrmDataService.Salaries.Max(x => x.Id) + 1;
             foreach (var employee in employees)
             {
-                HrmDataService.Salaries.Add(new SalaryRecord { Id = nextId++, EmployeeId = employee.Id, EmployeeName = employee.FullName, EmployeeCode = employee.Code, PeriodStart = period, BaseSalary = HrmBusinessService.GetBaseSalary(employee.Id, period), Bonus = 0, Deduction = 0, Status = "Chờ thanh toán" });
+                decimal baseSalary = HrmBusinessService.GetBaseSalary(employee.Id, period);
+                var calculation = HrmBusinessService.CalculatePayrollDeduction(employee, period, baseSalary);
+                HrmDataService.Salaries.Add(new SalaryRecord { Id = nextId++, EmployeeId = employee.Id, EmployeeName = employee.FullName, EmployeeCode = employee.Code, PeriodStart = period, BaseSalary = baseSalary, Bonus = 0, Deduction = calculation.SuggestedDeduction, Status = "Chờ thanh toán" });
             }
             HrmDataService.AddAudit("admin", "Tạo bảng lương", month + " - " + employees.Count + " phiếu");
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); ApplyMonthFilter(); return; }
             ApplyMonthFilter();
             MessageBox.Show("Đã tạo " + employees.Count + " phiếu lương. Hãy cập nhật thưởng và khấu trừ trước khi thanh toán.", "Tạo bảng lương thành công", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -102,6 +105,9 @@ namespace HRMDesktop.Views.Admin
             SalaryEmployeeText.Text = selected.EmployeeName + "  •  " + selected.Month + "  •  Lương cơ bản " + selected.BaseSalaryDisplay;
             BonusBox.Text = selected.Bonus.ToString("0");
             DeductionBox.Text = selected.Deduction.ToString("0");
+            var employee = HrmDataService.GetEmployee(selected.EmployeeId);
+            _currentSuggestion = HrmBusinessService.CalculatePayrollDeduction(employee, selected.PeriodStart, selected.BaseSalary);
+            PayrollSuggestionText.Text = _currentSuggestion.Summary;
             SalaryFormError.Visibility = Visibility.Collapsed;
             SalaryFormOverlay.Visibility = Visibility.Visible;
             BonusBox.Focus();
@@ -111,6 +117,7 @@ namespace HRMDesktop.Views.Admin
         {
             SalaryFormOverlay.Visibility = Visibility.Collapsed;
             _editingSalary = null;
+            _currentSuggestion = null;
         }
 
         private void SaveSalaryEdit_Click(object sender, RoutedEventArgs e)
@@ -135,11 +142,41 @@ namespace HRMDesktop.Views.Admin
             _editingSalary.Bonus = bonus;
             _editingSalary.Deduction = deduction;
             HrmDataService.AddAudit("admin", "Cập nhật phiếu lương", _editingSalary.EmployeeCode + " - " + _editingSalary.Month);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); SalaryFormOverlay.Visibility = Visibility.Collapsed; _editingSalary = null; _currentSuggestion = null; ApplyMonthFilter(); return; }
             SalaryFormOverlay.Visibility = Visibility.Collapsed;
             _editingSalary = null;
             RefreshSummary();
             MessageBox.Show("Đã cập nhật thưởng và khấu trừ.", "Lương và thưởng", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ApplySuggestedDeduction_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentSuggestion != null) DeductionBox.Text = _currentSuggestion.SuggestedDeduction.ToString("0");
+        }
+
+        private void RecalculatePayroll_Click(object sender, RoutedEventArgs e)
+        {
+            var rows = HrmDataService.Salaries.Where(x => x.Month == SelectedMonth && x.Status != "Đã thanh toán").ToList();
+            if (rows.Count == 0)
+            {
+                MessageBox.Show("Không có phiếu lương chờ thanh toán để tính lại.", "Đối chiếu chấm công", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (MessageBox.Show("Tính lại khấu trừ cho " + rows.Count + " phiếu chưa thanh toán từ dữ liệu chấm công và nghỉ phép?", "Đối chiếu chấm công", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            foreach (var row in rows)
+            {
+                var employee = HrmDataService.GetEmployee(row.EmployeeId);
+                row.Deduction = HrmBusinessService.CalculatePayrollDeduction(employee, row.PeriodStart, row.BaseSalary).SuggestedDeduction;
+            }
+            HrmDataService.AddAudit("admin", "Tính lại khấu trừ theo chấm công", SelectedMonth + " - " + rows.Count + " phiếu");
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); ApplyMonthFilter(); return; }
+            ApplyMonthFilter();
+            MessageBox.Show("Đã cập nhật khấu trừ cho các phiếu chưa thanh toán. Phiếu đã thanh toán được giữ nguyên.", "Đối chiếu chấm công", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private static void ShowSaveError()
+        {
+            MessageBox.Show("Không thể lưu thay đổi vào SQL Server. Dữ liệu trên màn hình đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

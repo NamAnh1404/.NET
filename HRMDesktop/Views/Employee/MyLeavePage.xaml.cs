@@ -56,7 +56,7 @@ namespace HRMDesktop.Views.Employee
             var employee = HrmDataService.GetEmployee(_account.EmployeeId);
             HrmDataService.LeaveRequests.Add(new LeaveRequest { Id=nextId, EmployeeId=_account.EmployeeId, EmployeeName=_account.FullName, EmployeeCode=employee == null ? string.Empty : employee.Code, LeaveType=leaveType, FromDate=fromDate, ToDate=toDate, SubmittedAt=SystemTimeService.Now, Reason=ReasonBox.Text.Trim(), Status="Chờ duyệt" });
             HrmDataService.AddAudit(_account.Username, "Gửi đơn nghỉ phép", fromDate.ToString("dd/MM/yyyy") + " - " + toDate.ToString("dd/MM/yyyy"));
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); RefreshData(); return; }
             ReasonBox.Clear(); FromDatePicker.SelectedDate = NextWorkingDay(SystemTimeService.Today); ToDatePicker.SelectedDate = NextWorkingDay(SystemTimeService.Today); RefreshData();
             MessageBox.Show("Đơn nghỉ phép đã được gửi và đang chờ Admin duyệt.", "Gửi đơn thành công", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -70,8 +70,13 @@ namespace HRMDesktop.Views.Employee
             request.Status = "Đã hủy";
             request.CancelledAt = SystemTimeService.Now;
             HrmDataService.AddAudit(_account.Username, "Hủy đơn nghỉ phép", request.DateRange);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); RefreshData(); return; }
             RefreshData();
+        }
+
+        private static void ShowSaveError()
+        {
+            MessageBox.Show("Không thể lưu thay đổi vào SQL Server. Dữ liệu đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         private static DateTime NextWorkingDay(DateTime date)

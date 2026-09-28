@@ -56,6 +56,70 @@ namespace HRMDesktop.Services
             return history == null ? (employee == null ? 0 : employee.BaseSalary) : history.BaseSalary;
         }
 
+        public static PayrollCalculation CalculatePayrollDeduction(Employee employee, DateTime period, decimal baseSalary)
+        {
+            var result = new PayrollCalculation();
+            if (employee == null || baseSalary <= 0) return result;
+
+            DateTime monthStart = new DateTime(period.Year, period.Month, 1);
+            DateTime monthEnd = monthStart.AddMonths(1).AddDays(-1);
+            DateTime evaluationEnd = monthEnd < SystemTimeService.Today ? monthEnd : SystemTimeService.Today.AddDays(-1);
+            var workingDates = Enumerable.Range(0, (monthEnd - monthStart).Days + 1)
+                .Select(offset => monthStart.AddDays(offset))
+                .Where(date => IsWorkingDay(date) && IsEmployedOn(employee, date))
+                .ToList();
+            result.ScheduledWorkingDays = workingDates.Count;
+            if (workingDates.Count == 0 || evaluationEnd < monthStart) return result;
+
+            decimal dailyRate = baseSalary / workingDates.Count;
+            decimal dayUnitsToDeduct = 0;
+            foreach (DateTime date in workingDates.Where(x => x <= evaluationEnd))
+            {
+                result.EvaluatedWorkingDays++;
+                var leave = HrmDataService.LeaveRequests.FirstOrDefault(x => x.EmployeeId == employee.Id && x.Status == "Đã duyệt" && date >= x.FromDate.Date && date <= x.ToDate.Date);
+                if (leave != null)
+                {
+                    if (leave.LeaveType == "Nghỉ không lương")
+                    {
+                        result.UnpaidLeaveDays++;
+                        dayUnitsToDeduct += 1;
+                    }
+                    continue;
+                }
+
+                var attendance = HrmDataService.Attendance.FirstOrDefault(x => x.EmployeeId == employee.Id && x.WorkDate.Date == date);
+                if (attendance == null || !attendance.CheckInAt.HasValue)
+                {
+                    result.AbsentDays++;
+                    dayUnitsToDeduct += 1;
+                    continue;
+                }
+                if (!attendance.CheckOutAt.HasValue)
+                {
+                    result.MissingCheckOutDays++;
+                    dayUnitsToDeduct += 0.5m;
+                    continue;
+                }
+
+                TimeSpan start = attendance.ScheduledStart == TimeSpan.Zero ? DefaultShift.StartTime : attendance.ScheduledStart;
+                TimeSpan end = attendance.ScheduledEnd == TimeSpan.Zero ? DefaultShift.EndTime : attendance.ScheduledEnd;
+                int grace = attendance.GraceMinutes < 0 ? 0 : attendance.GraceMinutes;
+                DateTime scheduledStart = date.Add(start);
+                DateTime scheduledEnd = date.Add(end);
+                if (attendance.IsOvernightShift || end <= start) scheduledEnd = scheduledEnd.AddDays(1);
+                int lateMinutes = Math.Max(0, (int)Math.Ceiling((attendance.CheckInAt.Value - scheduledStart.AddMinutes(grace)).TotalMinutes));
+                int earlyMinutes = Math.Max(0, (int)Math.Ceiling((scheduledEnd - attendance.CheckOutAt.Value).TotalMinutes));
+                result.LateMinutes += lateMinutes;
+                result.EarlyMinutes += earlyMinutes;
+                double shiftMinutes = Math.Max(1, (scheduledEnd - scheduledStart).TotalMinutes);
+                dayUnitsToDeduct += Math.Min(1m, (decimal)(lateMinutes + earlyMinutes) / (decimal)shiftMinutes);
+            }
+
+            decimal rawDeduction = dailyRate * dayUnitsToDeduct;
+            result.SuggestedDeduction = Math.Min(baseSalary, Math.Round(rawDeduction / 1000m, MidpointRounding.AwayFromZero) * 1000m);
+            return result;
+        }
+
         public static int GetAnnualLeaveUsed(int employeeId, int year, int excludingRequestId = 0)
         {
             return HrmDataService.LeaveRequests

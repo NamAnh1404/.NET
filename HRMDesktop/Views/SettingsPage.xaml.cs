@@ -72,7 +72,7 @@ namespace HRMDesktop.Views
                 credential.PasswordSalt = oldSalt;
                 credential.PasswordHash = oldHash;
                 while (HrmDataService.AuditLogs.Count > auditCount) HrmDataService.AuditLogs.RemoveAt(HrmDataService.AuditLogs.Count - 1);
-                ShowPasswordError("Không thể lưu mật khẩu mới. Hãy thử lại.");
+                ShowPasswordError("Không thể lưu mật khẩu mới. " + HrmDataService.LastSaveError);
                 return;
             }
 
@@ -102,7 +102,21 @@ namespace HRMDesktop.Views
                 credential.LeaveNotificationEnabled = _account.LeaveNotificationEnabled;
                 credential.SalaryNotificationEnabled = _account.SalaryNotificationEnabled;
             }
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges())
+            {
+                var persistedCredential = HrmDataService.Credentials.FirstOrDefault(x => x.Username == _account.Username);
+                if (persistedCredential != null)
+                {
+                    _account.AttendanceNotificationEnabled = persistedCredential.AttendanceNotificationEnabled;
+                    _account.LeaveNotificationEnabled = persistedCredential.LeaveNotificationEnabled;
+                    _account.SalaryNotificationEnabled = persistedCredential.SalaryNotificationEnabled;
+                    AttendanceNotification.IsChecked = _account.AttendanceNotificationEnabled;
+                    LeaveNotification.IsChecked = _account.LeaveNotificationEnabled;
+                    SalaryNotification.IsChecked = _account.SalaryNotificationEnabled;
+                }
+                MessageBox.Show("Không thể lưu cài đặt vào SQL Server. Dữ liệu đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
             MessageBox.Show("Đã lưu cài đặt thông báo.", "Cài đặt", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

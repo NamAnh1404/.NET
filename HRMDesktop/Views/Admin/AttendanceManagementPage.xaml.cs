@@ -157,7 +157,7 @@ namespace HRMDesktop.Views.Admin
             request.ReviewedAt = SystemTimeService.Now;
             request.ReviewedBy = "admin";
             HrmDataService.AddAudit("admin", action + " điều chỉnh chấm công", request.EmployeeCode + " - " + request.WorkDateDisplay);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { ShowSaveError(); ApplyFilter(); return; }
             ApplyFilter();
             MessageBox.Show("Yêu cầu đã được cập nhật: " + request.Status + ".", "Điều chỉnh chấm công", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -167,6 +167,11 @@ namespace HRMDesktop.Views.Admin
             bool matchesKeyword = string.IsNullOrEmpty(keyword) || (name ?? string.Empty).ToLower().Contains(keyword) || (code ?? string.Empty).ToLower().Contains(keyword);
             bool matchesDepartment = department == "Tất cả phòng ban" || employeeDepartment == department;
             return matchesKeyword && matchesDepartment;
+        }
+
+        private static void ShowSaveError()
+        {
+            MessageBox.Show("Không thể lưu thay đổi vào SQL Server. Dữ liệu đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

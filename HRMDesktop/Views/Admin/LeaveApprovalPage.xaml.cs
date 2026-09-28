@@ -76,7 +76,7 @@ namespace HRMDesktop.Views.Admin
             request.ReviewedAt = SystemTimeService.Now;
             request.ReviewedBy = "admin";
             HrmDataService.AddAudit("admin", action + " đơn nghỉ phép", request.EmployeeCode + " - " + request.DateRange);
-            HrmDataService.SaveChanges();
+            if (!HrmDataService.SaveChanges()) { MessageBox.Show("Không thể lưu thay đổi vào SQL Server. Dữ liệu đã được khôi phục.\n\n" + HrmDataService.LastSaveError, "Lỗi lưu dữ liệu", MessageBoxButton.OK, MessageBoxImage.Error); ApplyFilter(); return; }
             ApplyFilter();
             MessageBox.Show("Đơn của " + request.EmployeeName + " đã được cập nhật: " + status + ".", "Duyệt nghỉ phép", MessageBoxButton.OK, MessageBoxImage.Information);
         }

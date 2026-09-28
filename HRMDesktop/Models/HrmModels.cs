@@ -244,6 +244,27 @@ namespace HRMDesktop.Models
         public decimal BaseSalary { get; set; }
     }
 
+    public class PayrollCalculation
+    {
+        public int ScheduledWorkingDays { get; set; }
+        public int EvaluatedWorkingDays { get; set; }
+        public int AbsentDays { get; set; }
+        public int UnpaidLeaveDays { get; set; }
+        public int MissingCheckOutDays { get; set; }
+        public int LateMinutes { get; set; }
+        public int EarlyMinutes { get; set; }
+        public decimal SuggestedDeduction { get; set; }
+        public string Summary
+        {
+            get
+            {
+                return "Đề xuất " + SuggestedDeduction.ToString("N0") + " đ • Vắng " + AbsentDays +
+                       " ngày • Nghỉ không lương " + UnpaidLeaveDays + " ngày • Thiếu giờ ra " + MissingCheckOutDays +
+                       " ngày • Muộn " + LateMinutes + " phút • Về sớm " + EarlyMinutes + " phút";
+            }
+        }
+    }
+
     public class EmploymentPeriod
     {
         public int Id { get; set; }

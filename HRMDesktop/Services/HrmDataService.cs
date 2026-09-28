@@ -7,6 +7,7 @@ namespace HRMDesktop.Services
 {
     public static class HrmDataService
     {
+        public static string LastSaveError { get; private set; }
         public static ObservableCollection<Employee> Employees { get; private set; }
         public static ObservableCollection<AttendanceRecord> Attendance { get; private set; }
         public static ObservableCollection<LeaveRequest> LeaveRequests { get; private set; }
@@ -128,7 +129,22 @@ namespace HRMDesktop.Services
 
         public static bool SaveChanges()
         {
-            return DatabaseDataService.Save(CreateSnapshot());
+            if (DatabaseDataService.Save(CreateSnapshot()))
+            {
+                LastSaveError = null;
+                return true;
+            }
+
+            LastSaveError = string.IsNullOrWhiteSpace(DatabaseDataService.LastError) ? "Không thể lưu dữ liệu vào SQL Server." : DatabaseDataService.LastError;
+            string saveError = LastSaveError;
+            var persisted = DatabaseDataService.Load();
+            if (persisted != null)
+            {
+                ApplySnapshot(persisted);
+                EnsureDefaults();
+            }
+            LastSaveError = saveError;
+            return false;
         }
 
         private static HrmDataSnapshot CreateSnapshot()
